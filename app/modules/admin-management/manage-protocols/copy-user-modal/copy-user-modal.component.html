@@ -1,0 +1,17 @@
+<app-modal-desktop-layout *ngIf="show" [widthDesktop]="'704px'" (action)="onModalAction($event)"
+    [title]="'Copy from other protocol'" [idSaveBtn]="'btnSaveCopyUser'" [submitBtnText]="'Save'"
+    [idCancelBtn]="'btnCancelCopyUser'" [colorTitle]="'#044750'" [paddingBody]="'16px'"
+    [idTitle]="'titleCopyUserProtocol'" [isHighZIndex]="true">
+    <div modal-body>
+        <form [formGroup]="copyUserForm" class="copy-user-form">
+            <div class="form-field">
+                <app-multi-selection [formControlName]="'protocol'" [label]="'Protocol'" [isRequired]="true"
+                    [placeholder]="'Select Protocol'" [options]="protocolOptions" [multiSelect]="false"
+                    [isVirtualScroll]="true" [itemSize]="40" [isLoading]="isLoadingProtocols" [skeletonCount]="5"
+                    (selectionChange)="onProtocolChange($event)" (searchQuery)="onProtocolSearch($event)"
+                    (loadMore)="onLoadMoreProtocols()">
+                </app-multi-selection>
+            </div>
+        </form>
+    </div>
+</app-modal-desktop-layout>

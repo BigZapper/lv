@@ -1,0 +1,240 @@
+<div class="search-test-master">
+    <div class="page-title">
+        <h1 class="title-text" id="testMasterTitle">Test Master Search</h1>
+    </div>
+    <div class="search-section" [ngClass]="{'search-section-mobile': !isDesktop}">
+        <form [formGroup]="searchForm">
+            <div class="search-card">
+                <p class="search-label">Search for a test by Test Name or Test Code:</p>
+                <div *ngIf="isDesktop" class="search-form-desktop">
+                    <div class="search-inputs">
+                        <app-autocomplete [formControlName]="'testName'" [isRequired]="false" [label]="'Test Name'"
+                            [type]="'text'" [placeHolder]="'Test Name'" [model]="searchForm?.value.testName"
+                            [className]="'w-100'" [id]="'testNameFilter" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true" [maxLength]="100"></app-autocomplete>
+                        <app-autocomplete [formControlName]="'testCode'" [isRequired]="false" [label]="'Test Code'"
+                            [type]="'text'" [placeHolder]="'Test Code'" [model]="searchForm?.value.testCode"
+                            [className]="'w-100'" [id]="'testCodeFilter'" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true" [maxLength]="20"></app-autocomplete>
+                    </div>
+                    <div class="search-buttons">
+                        <app-button text="Clear" [background]="'#128474'" [height]="'44px'" [outlined]="true"
+                            className="previous-btn" [width]="'100%'" [id]="'btnClear'" (click)="onClear()" />
+                        <app-button text="Apply" [background]="'#128474'" [width]="'100%'" [id]="'btnApply'"
+                            (click)="onSearch()" />
+                    </div>
+                </div>
+                <div *ngIf="!isDesktop" class="search-form-mobile">
+                    <div class="input-wrapper mb-3">
+                        <div class="custom-input" [class.has-value]="testName">
+                            <app-autocomplete [formControlName]="'testName'" [isRequired]="false" [label]="'Test Name'"
+                                [type]="'text'" [placeHolder]="'Test Name'" [model]="searchForm?.value.testName"
+                                [className]="'w-100'" [id]="'testNameFilter'" (prepend)="onPrepend()"
+                                [checkOnPrepend]="false" [notPaddingX]="true" [maxLength]="100"></app-autocomplete>
+                        </div>
+                    </div>
+                    <div class="input-wrapper mb-3">
+                        <div class="custom-input" [class.has-value]="testName">
+                            <app-autocomplete [formControlName]="'testCode'" [isRequired]="false" [label]="'Test Code'"
+                                [type]="'text'" [placeHolder]="'Test Code'" [model]="searchForm?.value.testCode"
+                                [className]="'w-100'" [id]="'testCodeFilter'" (prepend)="onPrepend()"
+                                [checkOnPrepend]="false" [notPaddingX]="true" [maxLength]="20"></app-autocomplete>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <app-button text="Clear" [background]="'#128474'" [height]="'44px'" [outlined]="true"
+                                className="previous-btn" [width]="'100%'" [id]="'btnClear'" (click)="onClear()" />
+                        </div>
+                        <div class="col-6">
+                            <app-button text="Apply" [background]="'#128474'" [width]="'100%'" [id]="'btnApply'"
+                                (click)="onSearch()" />
+                        </div>
+                    </div>
+                </div>
+                <div *ngIf="showValidationError" class="validation-error">
+                    <span>* Please enter at least one search criteria.</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div *ngIf="hasSearched && searchResults.length > 0" class="results-section"
+        [ngClass]="{'results-section-mobile' : !isDesktop}">
+        <div class="results-card">
+            <div class="results-header">
+                <h2 class="results-title">Search results</h2>
+                <button type="button" class="btn-filter" (click)="toggleFilterModal()" id="btnFilterMobile">
+                    <img src="/assets/image/icon/slider.svg" alt="filter">
+                </button>
+            </div>
+            <div *ngIf="isDesktop && showFilter" class="filters-container">
+                <div class="filters-row">
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'testName'" [isRequired]="false" [label]="'Test Name'"
+                            [type]="'text'" [placeHolder]="'Test Name'" [model]="searchForm?.value.testName"
+                            [className]="'w-100'" [id]="'filterTestName'" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'testCode'" [type]="'text'" [placeHolder]="'Test Code'"
+                            [model]="searchForm?.value.testCode" [className]="'w-100'" [id]="'filterTestCode'"
+                            (prepend)="onPrepend()" [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'testAlias'" [isRequired]="false" [label]="'Test Alias'"
+                            [type]="'text'" [placeHolder]="'Test Alias'" [model]="searchForm?.value.testAlias"
+                            [className]="'w-100'" [id]="'filterTestAlias'" (prepend)="onPrepend()" [notPaddingX]="true"
+                            [checkOnPrepend]="false">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'testType'" [isRequired]="false" [label]="'Test Type'"
+                            [type]="'text'" [placeHolder]="'Test Type'" [model]="searchForm?.value.testType"
+                            [className]="'w-100'" [id]="'filterTestType'" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'reportName'" [isRequired]="false" [label]="'Report Name'"
+                            [type]="'text'" [placeHolder]="'Report Name'" [model]="searchForm?.value.reportName"
+                            [className]="'w-100'" [id]="'filterReportName'" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                </div>
+
+                <div class="filters-row">
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'status'" [isRequired]="false" [label]="'Status'"
+                            [type]="'text'" [placeHolder]="'Status'" [model]="searchForm?.value.status"
+                            [className]="'w-100'" [id]="'filterStatus'" (prepend)="onPrepend()" [checkOnPrepend]="false"
+                            [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'department'" [type]="'text'" [placeHolder]="'Department'"
+                            [model]="searchForm?.value.department" [className]="'w-100'" [id]="'filterDepartment'"
+                            (prepend)="onPrepend()" [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'method'" [isRequired]="false" [label]="'Method'"
+                            [type]="'text'" [placeHolder]="'Method'" [model]="searchForm?.value.method"
+                            [className]="'w-100'" [id]="'filterMethod'" (prepend)="onPrepend()" [notPaddingX]="true"
+                            [checkOnPrepend]="false">
+                        </app-autocomplete>
+                    </div>
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'baseUnit'" [isRequired]="false" [label]="'Base Unit'"
+                            [type]="'text'" [placeHolder]="'Base Unit'" [model]="searchForm?.value.baseUnit"
+                            [className]="'w-100'" [id]="'filterBaseUnit'" (prepend)="onPrepend()"
+                            [checkOnPrepend]="false" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+
+                    <div class="filter-field">
+                        <app-autocomplete [formControlName]="'assaySensitivity'" [isRequired]="false"
+                            [label]="'Assay Sensitivity'" [type]="'text'" [placeHolder]="'Assay Sensitivity'"
+                            [model]="searchForm?.value.assaySensitivity" [className]="'w-100'"
+                            [id]="'filterAssaySensitivity'" (prepend)="onPrepend()" [checkOnPrepend]="false"
+                            [notPaddingX]="true">
+                        </app-autocomplete>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mb-3 mt-3" *ngIf="isDesktop && showFilter'">
+
+                <app-button text="Apply Filters" [background]="'#128474'" [width]="'122px'" [id]="'btnSearch'"
+                    (click)="onSearch()" />
+
+                <app-button text="Clear Filters" [background]="'#128474'" [height]="'44px'" [outlined]="true"
+                    className="previous-btn" [width]="'122px'" [id]="'btnClear'" (click)="onClear()" />
+
+            </div>
+
+            <div *ngIf="isDesktop">
+                <div class="mb-3">
+                    <app-reusable-table [columns]="tableColumns" [data]="paginatedResults" [showSortIcon]="true"
+                        [defaultSortColumn]="'testName'" [defaultSortDirection]="'asc'"
+                        (sortChange)="onTableSort($event)" (clickTestLink)="navigateToTestDetails()">
+                    </app-reusable-table>
+                </div>
+                <ng-container *ngTemplateOutlet="pagination"></ng-container>
+            </div>
+
+            <div *ngIf="!isDesktop">
+                <div class="cards-container">
+                    <div *ngFor="let item of paginatedResults; let i = index" class="result-card"
+                        [class.expanded]="isCardExpanded(i)" [id]="'card' + i">
+                        <div class="card-header-row">
+                            <div class="card-header-content">
+                                <span class="card-label">Test Name: </span>
+                                <a class="link-primary card-value"
+                                    (click)="navigateToTestDetails()">{{item.testName}}</a>
+                            </div>
+                            <button class="btn btn-link p-0 more-btn" id="moreBtn{ {i}}">
+                                <img src="/assets/image/icon/ellipsis.svg" alt="more">
+                            </button>
+                        </div>
+                        <div class="card-body-row" (click)="toggleCardExpand(i)">
+                            <div class="card-body-content">
+                                <div class="card-info-group">
+                                    <div class="card-info-row">
+                                        <span class="card-label">Test Code :</span>
+                                        <a class="link-primary card-value"
+                                            (click)="navigateToTestDetails()">{{item.testCode}}</a>
+                                    </div>
+                                    <div class="card-info-row">
+                                        <span class="card-label">Test Alias :</span>
+                                        <span class="card-value">{{item.testAlias}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-link p-0 expand-btn">
+                                <img src="/assets/image/icon/dropdown-arrow-down.svg" alt="dropdown"
+                                    class="expand-icon-mobile" [class.rotated]="isCardExpanded(i)">
+                            </button>
+                        </div>
+
+                        <div *ngIf="isCardExpanded(i)" class="card-expanded">
+                            <div class="expanded-row">
+                                <span class="expanded-label">Test Type :</span>
+                                <span class="expanded-value">{{item.testType}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Report Name :</span>
+                                <span class="expanded-value">{{item.reportName}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Status :</span>
+                                <span class="expanded-value">{{item.status}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Department :</span>
+                                <span class="expanded-value">{{item.department}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Method :</span>
+                                <span class="expanded-value">{{item.method}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Base Unit :</span>
+                                <span class="expanded-value">{{item.baseUnit}}</span>
+                            </div>
+                            <div class="expanded-row">
+                                <span class="expanded-label">Assay Sensitivity :</span>
+                                <span class="expanded-value">{{item.assaySensitivity}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <ng-container *ngTemplateOutlet="pagination"></ng-container>
+            </div>
+        </div>
+    </div>
+</div>

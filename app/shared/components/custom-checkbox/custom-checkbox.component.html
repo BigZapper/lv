@@ -1,0 +1,46 @@
+<div class="d-flex align-items-start">
+    <label [id]="'wrap'+toUperCaseFirstCharacter" class="custom-checkbox m-0">
+        <input type="checkbox" [id]="id" [checked]="isChecked" (change)="toggleCheckbox()">
+        <img *ngIf="isImageVisible"
+            src="/assets/image/icon/{{isChecked ? 'checkbox-blur-blue.svg' : 'checkbox-blur-gray.svg'}}"
+            alt="bx error" />
+        <span class="checkmark" (mouseleave)="hideImage()" [style.top]="isPrivacy ? '2px' : '8px' "> </span>
+    </label>
+    <ng-content></ng-content>
+</div>
+
+<div *ngIf="isInvalid && !isPrivacy && !isTraining">
+    <div *ngIf="isChecked; else requiredError">
+    </div>
+    <ng-template #requiredError>
+        <div class="text-white mb-2 error-validation">
+            <img src="/assets/image/icon/error-white.svg" alt="bx error" style="margin: 0px 8px;" />
+            <span id="errorCompletePasswordTermsConditions">{{ 'complete_password. terms_conditions_error' | translate
+                }}</span>
+        </div>
+    </ng-template>
+</div>
+
+<div *ngIf="isInvalid && isPrivacy && !isTraining">
+    <div *ngIf="isChecked; else requiredError">
+    </div>
+    <ng-template #requiredError>
+        <div class="text-white mb-2 error-validation" style="margin-top: 8px;">
+            <img src="/assets/image/icon/error-white.svg" id="error-privacy" alt="bx error"
+                style="margin-right: 8px;" />
+            <span id="errorCompletePasswordPrivacy">Please acknowledge the Privacy Notice</span>
+        </div>
+    </ng-template>
+</div>
+
+<div *ngIf="isInvalid && isTraining && !isPrivacy">
+    <div *ngIf="isChecked; else requiredErrorTraining">
+    </div>
+    <ng-template #requiredErrorTraining>
+        <div class="text-white mb-2 error-validation" style="margin-top: 8px;">
+            <img src="/assets/image/icon/error-white.svg" id="error-training" alt="bx error"
+                style="margin-right: 8px;" />
+            <span id="errorCompletePasswordTraining">Please acknowledge you have completed the training.</span>
+        </div>
+    </ng-template>
+</div>

@@ -1,0 +1,438 @@
+<!-- Mobile view-->
+<div *ngIf="!isDesktop" class="manage-protocols-mobile">
+
+    <!--Mobile Protocol List View-->
+    <div *ngIf="showProtocolList" class="protocol-list-view">
+        <div class="page-header">
+            <h2 class="page-title">Protocol Management ({{ protocols.length }})</h2>
+        </div>
+
+        <form [formGroup]="searchForm">
+            <div class="search-actions">
+                <app-autocomplete [formControlName]="'searchText'" [isRequired]="false" [label]=" 'Search'"
+                    [type]="'text'" [placeHolder]="'Search'" [model]="searchForm?.value?.searchText"
+                    [className]="'w-100'" [id]="'searchProtocol'" [notPaddingX]="true">
+                </app-autocomplete>
+            </div>
+        </form>
+
+        <div class="action-buttons-mobile">
+            <app-button text="Manage Report Permissions" [background]="'#128474'" [width]="'100%'" [height]="'40px'">
+            </app-button>
+            <app-button text="Add users" [background]="'#128474'" [width]="'100%'" [height]="'40px'">
+            </app-button>
+        </div>
+
+        <div class="protocols-card">
+            <div class="protocols-card-header">
+                <h3 class="protocols-card-title">Activated Protocols</h3>
+            </div>
+            <div class="protocols-list">
+                <div *ngFor="let protocol of protocols; let i = index" class="protocol-item"
+                    [ngClass]="{ 'selected': selectedProtocol?.protocolId === protocol.protocolId }"
+                    (click)="selectProtocol(protocol)">
+                    <span class="protocol-name">{{ protocol ?. studyCode }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Protocol Detail View -->
+    <div *ngIf="!showProtocolList && selectedProtocol" class="protocol-detail-view">
+        <!-- Back Button -->
+        <div class="back-button" (click)="backToProtocolList()">
+            <!-- Back arrow SVG -->
+            <img src="/assets/image/icon/a-left.svg" alt="icon logo" tabindex="0" id="backButtonHeaderIcon" />
+            <span>Back</span>
+        </div>
+
+        <!-- Selected Protocol Details -->
+        <div class="protocol-details">
+            <h3 class="protocol-title">{{ selectedProtocol.studyCode }}</h3>
+
+            <div class="protocol-info">
+                <div class="info-row">
+                    <span class="label">Sponsor: </span>
+                    <span class="value">{{ selectedProtocol.sponsor }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Study Type :</span>
+                    <span class="value">{{ selectedProtocol.studyType }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Status :</span>
+                    <span class="status-badge" [ngClass]="selectedProtocol.status === 'ACTIVE' ? 'active' : 'closed'">
+                        {{ selectedProtocol.status }}
+                    </span>
+                </div>
+                <div class="info-row" *ngIf="selectedProtocol.overwriteStatus">
+                    <span class="label">Overwrite Status: </span>
+                    <div class="overwrite-toggle">
+                        <button class="toggle-button" [ngClass]="{ 'active': selectedProtocol.overwriteStatus }"
+                            (click)="toggleOverwriteStatus(selectedProtocol)">
+                            <span class="toggle-thumb"></span>
+                        </button>
+                        <span class="status-badge open">OPEN</span>
+                    </div>
+                </div>
+                <div class="more-action">
+                    <span>More action</span>
+                    <!-- More action ellipsis SVG -->
+                    <img src="/asset/image/icon/ellipsis.svg" class="expand-icon-mobile" alt="more">
+                </div>
+            </div>
+        </div>
+
+        <!-- Associated Users Section -->
+        <div class="associated-users-sction">
+            <h3 class="section-title">Associated Users ({{ totalUsers }})</h3>
+
+            <!-- Search and Filter -->
+            <div class="search-filter-row">
+                <app-autocomplete [formControlName]="'searchText'" [isRequired]="false" [label]="'Search'"
+                    [type]="'text'" [placeHolder]="'Search'" [model]="searchForm?.value?.searchText"
+                    [className]="'w-100'" [id]="'searchUsers'" [notPaddingX]="true">
+                </app-autocomplete>
+                <button class="filter-button">
+                    <img src="/asset/image/icon/slider.svg" alt="filter">
+                </button>
+            </div>
+
+            <!-- Select All -->
+            <div class="select-all-row">
+                <app-checkbox [model]="selectAll" (modelChange)="toggleSelectAll()"></app-checkbox>
+            </div>
+            <span>Select all</span>
+        </div>
+
+        <!-- User Cards List -->
+        <div class="users-list">
+            <div *ngFor="let user of associatedUsers; let i = index" class="user-card">
+                <!-- User Header -->
+                <div class="user-header">
+                    <div class="user-header-left">
+                        <app-checkbox [model]="isUserSelected(i)" (modelChange)="toggleUserSelection(i)">
+                        </app-checkbox>
+                        <div class="user-role-info">
+                            <span class="label">User Role :</span>
+                            <span class="value">{{ user.userRole }}</span>
+                        </div>
+                    </div>
+                    <button class="more-button">
+                        <!-- More button ellipsis SVG -->
+                        <img src="/assets/image/icon/ellipsis.svg" class="expand-icon-mobile" alt="more">
+                    </button>
+                </div>
+
+                <!-- User Details (Expandable) -->
+                <div class="user-details">
+                    <button class="expand-button" (click)="toggleUserExpansion(i)">
+                        <div class="details-content">
+                            <div class="detail-row">
+                                <span class="label">First Name: </span>
+                                <span class="value">{{ user.firstName }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Last Name :</span>
+                                <span class="value">{{ user.lastName }}</span>
+                            </div>
+                        </div>
+                        <!-- Dropdown arrow SVG -->
+                        <img src="/assets/image/icon/dropdown-arrow-down.svg" alt="dropdown" class="expand-icon-mobile"
+                            [class.rotated]="isUserExpanded(i)">
+                    </button>
+
+                    <!-- Expanded Content -->
+                    <div *ngIf="user.expanded" class="expanded-content">
+                        <div class="expanded-row">
+                            <span class="label">User Email :</span>
+                            <span class="value">{{ user.userEmail }}</span>
+                        </div>
+                        <div class="expanded-row">
+                            <span class="label">Region :</span>
+                            <span class="value">{{ user.region }}</span>
+                        </div>
+                        <div class="expanded-row">
+                            <span class="label">Country :</span>
+                            <span class="value">{{ user.country }}</span>
+                        </div>
+                        <div class="expanded-row">
+                            <span class="label">Site :</span>
+                            <span class="value">{{ user.site }}</span>
+                        </div>
+                        <div class="expanded-row expanded-row-last">
+                            <span class="label">User Status :</span>
+                            <span class="value">{{ user.userStatus }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <ng-container *ngTemplateOutlet="pagination"></ng-container>
+    </div>
+</div>
+
+
+<!-- Desktop View -->
+<div *ngIf="isDesktop">
+    <div class="page-header">
+        <h1 class="page-title">Protocol Management ({{ totalActivatedProtocols }})</h1>
+        <div class="header-actions">
+            <div class="action-buttons">
+                <app-button text="Manage Report Permissions" [background]="'#128474'" [height]="'44px'">
+                </app-button>
+                <div class="add-user-wrapper">
+                    <app-button text="Add User" [background]="'#128474'" [width]="'auto'" [height]="'44px'"
+                        (onClick)="toggleAddUserDropdown($event)" [id]="'btnAddUser'">
+                    </app-button>
+                    <app-dropdown-action width="230px" [items]="addUserDropdownItems" [show]="showAddUserDropdown"
+                        [preventAutoClose]="showAddUserModal" (showChange)="showAddUserDropdown = $event"
+                        (itemClick)="onAddUserDropdownItemClick($event)">
+                    </app-dropdown-action>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="manage-protocols-desktop">
+        <!-- Protocol List Sidebar -->
+        <div class="protocol-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Activated Protocols</span>
+                <span>
+                    <form [formGroup]="searchProtocolForm">
+                        <app-autocomplete [formControlName]="'searchProtocol'" [isRequired]="false"
+                            [label]="'Search Protocol'" [type]="'text'" [placeHolder]="'Search Protocol'"
+                            [model]="searchProtocolForm ?. value ?. searchProtocol" [className]="'w-100'"
+                            [id]="'searchProtocol'" [notPaddingX]="true">
+                        </app-autocomplete>
+                    </form>
+                </span>
+            </div>
+            <div class="protocol-list">
+                <cdk-virtual-scroll-viewport #viewport itemSize="40" minBufferPx="750" maxBufferPx="750"
+                    class="protocol-list example-viewport" [style.height]="'100%'" buffer>
+                    <div *cdkVirtualFor="let protocol of protocols" class="protocol-item"
+                        [ngClass]="{ 'selected': selectedProtocol ?. protocolId === protocol.protocolId }"
+                        (click)="selectProtocol(protocol)">
+                        <span class="protocol-name">{{ protocol.studyCode }}</span>
+                    </div>
+                    <app-scroll-text-skeleton *ngIf="isLoading"></app-scroll-text-skeleton>
+                </cdk-virtual-scroll-viewport>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Page Header with Title and Actions -->
+
+            <div *ngIf="protocolDetail" class="content-wrapper">
+                <!-- Protocol Header Section -->
+                <div class="protocol-header-section">
+                    <h2 class="protocol-title">{{ protocolDetail.studyCode }}</h2>
+                    <div class="protocol-meta-row">
+                        <div class="protocol-meta">
+                            <div class="meta-item">
+                                <span class="label">Sponsor :</span>
+                                <span class="value">{{ protocolDetail.sponsor }}</span>
+                            </div>
+                            <div class="divider-vertical-small"></div>
+                            <div class="meta-item">
+                                <span class="label">Study Type :</span>
+                                <span class="value">{{ protocolDetail.studyType }}</span>
+                            </div>
+                            <div class="divider-vertical-small"></div>
+                            <div class="meta-item">
+                                <span class="label">Status :</span>
+                                <span class="status-badge"
+                                    [ngClass]="protocolDetail.status === 'ACTIVE' ? 'active' : 'closed'">
+                                    {{ protocolDetail.status }}
+                                </span>
+                            </div>
+                            <div class="divider-vertical-small"></div>
+                            <div class="meta-item">
+                                <span class="label">Overwrite Status :</span>
+                                <div class="toggle-group">
+                                    <button class="toggle-button"
+                                        [ngClass]="{ 'active': protocolDetail ?. overwriteStatus }"
+                                        (click)="toggleOverwriteStatus(protocolDetail)">
+                                        <span class="toggle-thumb"></span>
+                                    </button>
+                                    <span class="status-badge open">{{protocolDetail ?. overwriteStatus ? 'Open' :
+                                        'Closed'}}</span>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="position-relative">
+                            <button class="more-action-button" (click)="toggleMoreActionDropdown($event)">
+                                <span>More action</span>
+                                <img src="/assets/image/icon/ellipsis.svg" class="expand-icon-mobile" alt="more">
+                            </button>
+                            <app-dropdown-action width="auto" [items]="moreActionDropdownItems"
+                                [show]="showMoreActionDropdown" (showChange)="showMoreActionDropdown = $event"
+                                (itemClick)="onMoreActionDropdownItemClick($event)">
+                            </app-dropdown-action>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Associated Users Section -->
+                <div class="users-section">
+                    <!-- Filter Section -->
+                    <div class="filter-section">
+                        <div class="d-flex justify-content-between">
+                            <h3 class="section-title">Associated Users ({{ totalUsers }})</h3>
+                            <form [formGroup]="searchForm">
+                                <div style="transform: translateY(-10px);">
+                                    <app-autocomplete [formControlName]="'searchText'" [isRequired]="false"
+                                        [label]="'Search'" [type]="'text'" [placeHolder]="'Search'"
+                                        [model]="searchForm ?. value ?. searchText" [className]="'w-100'"
+                                        [id]="'searchAssociatedUsers'" [notPaddingX]="true"
+                                        [isResetValue]="isResetValue(searchForm, 'searchText')">
+                                    </app-autocomplete>
+                                </div>
+                            </form>
+                        </div>
+                        <form [formGroup]="filterForm">
+                            <div class="filters-row">
+                                <div class="filter-fields">
+                                    <div class="filter-field">
+                                        <app-autocomplete [formControlName]="'userEmail'" [isRequired]="false"
+                                            [label]="'User Email'" [type]="'text'" [placeHolder]="'User Email'"
+                                            [model]="filterForm ?. value ?. userEmail" [className]="'w-100'"
+                                            [id]="'filterUserEmail'" (prepend)="onPrepend()" [checkOnPrepend]="false"
+                                            [notPaddingX]="true" [isResetValue]="isResetValue(filterForm, 'userEmail')">
+                                        </app-autocomplete>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-autocomplete [formControlName]="'firstName'" [isRequired]="false"
+                                            [label]="'First Name'" [type]="'text'" [placeHolder]="'First Name'"
+                                            [model]="filterForm ?. value ?. firstName" [className]="'w-100'"
+                                            [id]="'filterFirstName'" (prepend)="onPrepend()" [checkOnPrepend]="false"
+                                            [notPaddingX]="true" [isResetValue]="isResetValue(filterForm, 'firstName')">
+                                        </app-autocomplete>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-selectbox [formControlName]="'userRole'" [isRequired]="false"
+                                            [label]="'User Role'" [type]="'text'" placeHolder="User Role"
+                                            [className]="'w-100'" [id]="'filterUserRole'" [data]="userRoleOptions"
+                                            [classWrapperName]="'p-0'" [isFull]="true">
+                                        </app-selectbox>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-selectbox [formControlName]="'region'" [isRequired]="false"
+                                            [label]="'Region'" [type]="'text'" placeHolder="Region"
+                                            [className]="'w-100'" [id]="'filterRegion'" [data]="regionOptions"
+                                            [classWrapperName]="'p-0'" [isFull]="true">
+                                        </app-selectbox>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-selectbox [formControlName]="'country'" [isRequired]="false"
+                                            [label]="'Country'" [type]="'text'" placeHolder="Country"
+                                            [className]="'w-100'" [id]="'filterCountry'" [data]="countryOptions"
+                                            [classWrapperName]="'p-0'" [isFull]="true">
+                                        </app-selectbox>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-selectbox [formControlName]="'site'" [isRequired]="false" [label]="'Site'"
+                                            [type]="'text'" placeHolder="Site" [className]="'w-100'" [id]="'filterSite'"
+                                            [data]="siteOptions" [classWrapperName]="'p-0'" [isFull]="true">
+                                        </app-selectbox>
+                                    </div>
+
+                                    <div class="filter-field">
+                                        <app-selectbox [formControlName]="'userStatus'" [isRequired]="false"
+                                            [label]="'User Status'" [type]="'text'" placeHolder="User Status"
+                                            [className]="'w-100'" [id]="'filterUserStatus'" [classWrapperName]="'p-0'"
+                                            [isFull]="true">
+                                        </app-selectbox>
+                                    </div>
+                                </div>
+                                <div class="filter-buttons">
+                                    <app-button text="Apply Filters" [background]="'#128474'" [width]="'auto'"
+                                        [height]="'44px'" (click)="applyFilters()">
+                                    </app-button>
+                                    <app-button text="Clear Filters" [background]="'#128474'" [height]="'44px'"
+                                        [outlined]="true" className="previous-btn" [width]="'100%'" [id]="'btnClear'"
+                                        (click)="clearFilters()" />
+                                </div>
+                            </div>
+                            <!-- Users Table -->
+                            <div class="table-wrapper">
+                                <app-reusable-table [columns]="tableColumns" [data]="associatedUsers"
+                                    [defaultSortColumn]="'email'" [defaultSortDirection]="'asc'" [showSortIcon]="true"
+                                    (sortChange)="onTableSort($event)" [isScrollY]="true" [isNoBorder]="true"
+                                    [isTableReportAdmin]="true">
+                                </app-reusable-table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <ng-container *ngTemplateOutlet="pagination"></ng-container>
+                    </div>
+                </div>
+
+                <div *ngIf="!selectedProtocol" class="no-selection">
+                    <p>Select a protocol to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #pagination>
+        <app-pagination-table [page]="page" [pageSize]="pageSize" [total]="totalUsers" *ngIf="totalUsers > 0"
+            (action)="onActionPage($event)" [isDesktop]="true">
+        </app-pagination-table>
+    </ng-template>
+
+    <!-- Add User Modal -->
+    <app-add-user-modal *ngIf="isDesktop" [show]="showAddUserModal" [userRoleOptions]="userRoleOptions"
+        [regionOptions]="regionOptions" [countryOptions]="countryOptions" [siteOptions]="siteOptions"
+        [userStatusOptions]="userStatusOptions" (save)="onAddUserModalSave($event)"
+        (close)="onAddUserModalClose()">
+    </app-add-user-modal>
+
+    <!-- Registration email -->
+     <app-registration-email-modal
+        *ngIf="isDesktop"
+        [show]="showRegistrationEmailModal"
+        [title]="'Send'"
+        ()
+
+    <!-- Send Email Confirmation Modal -->
+    <app-hybrid-modal *ngIf="showSendEmailConfirmModal" [background]="'transparent'">
+        <div content>
+            <app-modal-desktop-layout [submitBtnText]="'Send Email'" [cancelBtnText]="'Cancel'"
+                [idSaveBtn]="'confirmSendEmailBtn'" (action)="$event === 1 ? onSendEmailConfirm() : onSendEmailCancel()"
+                [idCancelBtn]="'cancelSendEmailBtn'" [title]="'Confirm to send email'"
+                [idTitle]="'confirmSendEmailTitle'" [paddingBody]="'20px 13px'" [bodyCenter]="false">
+                <div modal-body>
+                    <div class="text-left">
+                        Are you sure you want to send email to all the associated users in {{selectedProtocol?.protocolId}}?
+                    </div>
+                </div>
+            </app-modal-desktop-layout>
+        </div>
+    </app-hybrid-modal>
+
+    <!-- Resend Email Confirmation Modal -->
+    <app-hybrid-modal *ngIf="showResendEmailConfirmModal" [background]="'transparent'">
+        <div content>
+            <app-modal-desktop-layout [submitBtnText]="'Resend Email'" [cancelBtnText]="'Cancel'"
+                [idSaveBtn]="'confirmResendEmailBtn'" (action)="$event === 1 ? onResendEmailConfirm() : onResendEmailCancel()"
+                [idCancelBtn]="'cancelResendEmailBtn'" [title]="'Confirm to resend email'"
+                [idTitle]="'confirmResendEmailTitle'" [paddingBody]="'20px 13px'" [bodyCenter]="false">
+                <div modal-body>
+                    <div class="text-left">
+                        Are you sure you want to resend email to all the associated users in {{selectedProtocol?.protocolId}}?
+                    </div>
+                </div>
+            </app-modal-desktop-layout>
+        </div>
+    </app-hybrid-modal>

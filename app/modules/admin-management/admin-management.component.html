@@ -1,0 +1,22 @@
+<!-- Admin Management Page -->
+<div class="admin-management">
+    <!-- Page Title -->
+    <div class="page-title" [ngClass]="{'page-title-mobile': !isDesktop}">
+        <h1 class="title-text">Admin Management</h1>
+    </div>
+
+    <!-- Tabs Section -->
+    <div class="tabs-section" [ngClass]="{'tabs-section-mobile': !isDesktop}">
+        <div class="tabs-container" [ngClass]="{'tabs-scroll': !isDesktop}">
+            <div *ngFor="let tab of tabs" class="tab-item" [class.active]="isActiveTab(tab.route)"
+                (click)="navigateToTab(tab.route)">
+                {{ tab.label }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Router Outlet for Child Components -->
+    <div class="content-section" [ngClass]="{'content-section-mobile': !isDesktop}">
+        <router-outlet></router-outlet>
+    </div>
+</div>

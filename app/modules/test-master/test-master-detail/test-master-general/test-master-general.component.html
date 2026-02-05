@@ -1,0 +1,141 @@
+<div class="row pb-2">
+    <div class="col-12 col-lg-6 d-flex general detail">
+        <div class="title" [id]="'testIndentication'">Test Indentication</div>
+        <div class="text" id="testCode">
+            Test Code: <span class="value">{{generalDetail.testCode}}</span>
+        </div>
+        <div class="text" [id]="'testName'">
+            Test Name: <span class="value">{{
+                generalDetail.testName }}</span>
+        </div>
+        <div class="text" [id]="'testAlias'">
+            Test Alias: <span class="value">{{
+                generalDetail.testAliases }}</span>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6 d-flex general detail">
+        <div class="title" [id]="'unitConversionMaster'">Unit Conversion Master</div>
+        <div class="text" [id]="'iconWorkingUnit'">
+            Icon Working Unit: <span class="value">{{ generalDetail.workingUnit
+                }}</span>
+        </div>
+        <div class="text" [id]="'decimalPlaces'">
+            Decimal Places: <span class="value">{{ generalDetail.decimalPlaces
+                }}</span>
+        </div>
+    </div>
+</div>
+<div class="d-flex w-100 pb-2">
+    <div class="d-flex general detail">
+        <div class="title" [id]="'reportConfiguration' ">Report Configuration</div>
+        <div class="d-flex">
+            <div id="isLabReportHeld">
+                <img [id]="(generalDetail. isApprovedForClinicalRep ? 'labReportChecked' : 'labReportUnchecked')"
+                    [src]="'/assets/image/icon/'+ (generalDetail. isApprovedForClinicalRep ? 'lab_report_checked. svg' : 'lab_report_blank. svg')"
+                    alt="">
+                <span>
+                    Approved for clinical Reporting, results included on lab reports for all locations
+                </span>
+            </div>
+        </div>
+        <div class="d-flex">
+            <div id="isLabReportHeld" class="d-flex">
+                <img [id]="(generalDetail.isResearchUseOnly ? 'labReportChecked': 'labReportUnchecked')"
+                    [src]="'/assets/image/icon/'+ (generalDetail.isResearchUseOnly ? 'lab_report_checked.svg' : 'lab_report_blank. svg')"
+                    alt="">
+                <span class="ms-1">
+                    Research use only comment is added
+                </span>
+            </div>
+        </div>
+        <div class="d-flex">
+            <div id="isLabReportHeld" class="d-flex">
+                <img [id]="(generalDetail.solutionIVDRComplaint ? 'labReportChecked': 'labReportUnchecked')"
+                    [src]="'/assets/image/icon/'+ (generalDetail.solutionIVDRComplaint ? 'lab_report_checked.svg' : 'lab_report_blank.svg')"
+                    alt="">
+                <span class="ms-1">
+                    Solution is IVDR compliant
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="d-flex w-100 pb-2">
+    <div class="d-flex general detail">
+        <div class="title">Location Status</div>
+        <div *ngIf="isDesktop">
+            <div class="mb-3">
+                <app-reusable-table [columns]="tableColumns" [data]="paginatedResults.locations" [showSortIcon]="true"
+                    [defaultSortColumn]="'testName'" [defaultSortDirection]="'asc'"
+                    (sortChange)="onTableSort($event)"></app-reusable-table>
+            </div>
+        </div>
+
+        <!-- Mobile card view -->
+        <div *ngIf="!isDesktop">
+            <ng-container *ngTemplateOutlet="locationCardsTemplate; context: { locations: displayedLocations, idPrefix: 'card' }"></ng-container>
+            
+            <div *ngIf="paginatedResults.locations.length > 5" 
+                 class="text-center mt-3">
+                <span class="show-more-link" (click)="openLocationPopup()" 
+                      style="cursor: pointer; color: #007bff; text-decoration: underline;">
+                    Show more ({{remainingLocationsCount}})
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ng-template for location cards - reusable -->
+<ng-template #locationCardsTemplate let-locations="locations" let-idPrefix="idPrefix">
+    <div class="cards-container">
+        <div *ngFor="let item of locations; let i = index" class="result-card"
+            [class.expanded]="isCardExpanded(i)" [id]="idPrefix + i">
+            <div class="card-header-row">
+                <div class="card-header-content">
+                    <span class="card-label">Location :</span>
+                    <span class="card-value">{{item.locationName}}</span>
+                </div>
+                <div class="activeStatus">{{item.status}}</div>
+            </div>
+
+            <div class="card-body-row" (click)="toggleCardExpand(i)">
+                <div class="card-body-content">
+                    <div class="card-info-group">
+                        <div class="card-info-row">
+                            <span class="card-label">Testing Frequency :</span>
+                            <span class="card-value">{{item.testingFrequency}}</span>
+                        </div>
+                        <div class="card-info-row">
+                            <span class="card-label">Comment: </span>
+                            <span class="card-value"
+                                [ngClass]="!isCardExpanded(i)?'commentCollasped':''">{{item.comment}}</span>
+                        </div>
+                        <div class="card-info-row">
+                            <span class="card-label">Turn around time: </span>
+                            <span class="card-value">{{item.turnAroundTime}}</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-link p-0 expand-btn">
+                    <img src="/assets/image/icon/dropdown-arrow-down.svg" alt="dropdown"
+                        class="expand-icon-mobile" [class.rotated]="isCardExpanded(i)">
+                </button>
+            </div>
+        </div>
+    </div>
+</ng-template>
+
+<!-- Location popup modal -->
+<app-hybrid-modal *ngIf="showLocationPopup" [background]="'transparent'">
+    <div content>
+        <app-modal-desktop-layout [cancelBtnText]="'Close'" [idCancelBtn]="'closeLocationPopupBtn'"
+            [title]="'All Locations'" [idTitle]="'locationPopupTitle'" [paddingBody]="'20px 13px'"
+            [showSubmitBtn]="false" (action)="onModalAction($event)">
+            <div modal-body>
+                <ng-container *ngTemplateOutlet="locationCardsTemplate; context: { locations: paginatedResults.locations, idPrefix: 'popupCard' }"></ng-container>
+            </div>
+        </app-modal-desktop-layout>
+    </div>
+</app-hybrid-modal>

@@ -1,0 +1,90 @@
+<div *ngIf="!isDesktop" class="h-100 d-flex flex-column justify-content-between">
+    <div>
+        <div class="d-flex align-items-center justify-content-between mb-3 page-header">
+            <h1 class="page-header-title">Test Details</h1>
+
+            <button type="button" class="btn-export" (click)="exportPdf()">
+                Export as PDF
+            </button>
+        </div>
+
+        <div class="section-card" *ngFor="let s of sections">
+            <button class="section-header" type="button" (click)="toggle(s.key)" [class.expanded]="expanded[s.key]">
+                <span>{{ s.title }}</span>
+                <span class="chevron"></span>
+            </button>
+
+            <div class="section-body" [class.d-none]="!expanded[s.key]">
+                <app-test-master-general *ngIf="s.key === 'general'"></app-test-master-general>
+                <app-test-master-assay *ngIf="s.key === 'assay'"></app-test-master-assay>
+                <app-test-master-specimen *ngIf="s.key === 'specimen'"></app-test-master-specimen>
+                <app-test-master-reference *ngIf="s.key === 'reference'"></app-test-master-reference>
+                <app-test-master-loinc *ngIf="s.key === 'loinc'"></app-test-master-loinc>
+            </div>
+        </div>
+    </div>
+    <div>
+        <app-sub-footer [isDesktop]="false"></app-sub-footer>
+    </div>
+</div>
+
+<div *ngIf="isDesktop" id="wrapper-desktop-test">
+    <!-- Header (desktop) -->
+    <div class="d-flex align-items-center justify-content-between mb-3 page-header">
+        <h1 class="page-header-title" style="padding-left: 30px;">Test Details</h1>
+        <button type="button" class="btn-export" (click)="exportPdf()">
+            Export as PDF
+        </button>
+    </div>
+    <div class="d-flex justify-content-start back-to-results">
+        <span style="cursor: pointer;">
+            <span style="margin-right: 15px;">
+                < </span>
+                    <span id="textBackToResults">Back to Results </span>
+            </span>
+    </div>
+
+    <div #scrollContainer class="row tm-scroll" (scroll)="onContainerScroll()"
+        style="margin: Opx; background-color: #f1f1f1;">
+        <!-- LEFT: content -- > -->
+        <div class="left-content">
+            <div class="content-card">
+
+                <!-- Sections -->
+                <section *ngFor="let s of sections" class="section-block" [attr.id]="s.anchorId"
+                    [attr.data-anchor]="s.anchorId">
+
+                    <div class="section-title-bar" [attr.id]="s.anchorId + '-hdr'">
+                        <div class="section-title">{{ s.title }}</div>
+                    </div>
+                    <div class="section-body">
+                        <app-test-master-general *ngIf="s.key === 'general'"></app-test-master-general>
+                        <app-test-master-assay *ngIf="s.key === 'assay'"></app-test-master-assay>
+                        <app-test-master-specimen *ngIf="s.key === 'specimen'"></app-test-master-specimen>
+                        <app-test-master-reference *ngIf="s.key === 'reference'"></app-test-master-reference>
+                        <app-test-master-loinc *ngIf="s.key === 'loinc'"></app-test-master-loinc>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!--RIGHT: Table of Contents (sticky) -->
+        <div class="right-content">
+            <div class="toc border-0">
+                <div class="toc-inner">
+                    <div class="toc-title">Table of Contents</div>
+
+                    <nav class="toc-list">
+                        <button type="button" *ngFor="let s of sections" class="toc-item"
+                            [class.active]="activeAnchorId === s.anchorId" (click)="scrollTo(s.anchorId)">
+                            {{ s.title }}
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <div class="tm-footer">
+            <app-sub-footer></app-sub-footer>
+        </div>
+    </div>
+</div>

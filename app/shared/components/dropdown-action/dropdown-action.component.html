@@ -1,0 +1,34 @@
+<div *ngIf="show" class="dropdown-action" [style.width]="width"
+    [ngClass]="{'position-left': position === 'left', 'position-right': position === 'right'}"
+    (click)="$event.stopPropagation()">
+    <div *ngFor="let item of items" class="position-relative" 
+         (mouseenter)="onItemHover(item)"
+         (mouseleave)="onItemHover(null)"
+         [class.has-children]="item.childrens && item.childrens.length > 0">
+        <div class="dropdown-item" [ngClass]="{'selected': item.selected}" 
+             (click)="onItemClick(item, $event)">
+            <span>{{ item.text }}</span>
+            <div class="item-icons">
+                <img *ngIf="item.icon && item.selected" [src]="'/assets/image/icon/check.svg'" alt="check"
+                    class="check-icon">
+                <img *ngIf="item.childrens && item.childrens.length > 0" 
+                     [src]="'/assets/image/icon/chevron-right.svg'" alt="expand"
+                     class="chevron-icon">
+            </div>
+        </div>
+        
+        <!-- Submenu -->
+        <div *ngIf="item.childrens && item.childrens.length > 0 && hoveredItem === item" 
+             class="submenu" [style.width]="width">
+            <div *ngFor="let child of item.childrens" class="dropdown-item child-item"
+                 [class.child-hovered]="hoveredChildItem === child"
+                 (mouseenter)="onChildItemHover(child)"
+                 (mouseleave)="onChildItemHover(null)"
+                 (click)="onChildItemClick(child, $event)">
+                <span>{{ child.text }}</span>
+                <img *ngIf="child.icon && child.selected" [src]="'/assets/image/icon/check.svg'" alt="check"
+                    class="check-icon">
+            </div>
+        </div>
+    </div>
+</div>

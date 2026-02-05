@@ -1,0 +1,89 @@
+<div *ngIf="!isDesktop" class="h-100 d-flex flex-column justify-content-between">
+    <div class="wrapper-mobile-review">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold m-0" id="userTitle">User Guide</h5>
+        </div>
+        <div>
+            <div class="parent-title" id="userGuideTitle">
+                Welcome to the User Guide! <br><br>
+                For detailed instructions and all necessary
+                information, please click link below to access the full guide:
+            </div>
+        </div>
+        <table class="w-100 requisition-wrapper" id="requisitionTable">
+            <tr>
+                <th class="table-header" id="visitRequisition" style="font-weight: bold;">Document Path
+                </th>
+            </tr>
+            <tbody>
+                <tr>
+                    <td class="table-body">
+                        <a *ngIf="isIRISUser" id="userGuideTitleLink"
+                            style="color: #00A7CF !important; text-decoration-line: underline !important; cursor: pointer"
+                            [href]="openIRISUserGuide()" target="_blank"> 
+                            LabView360 IRIS User Guide.pdf
+                        </a>
+                        <a *ngIf="!isIRISUser" id="userGuideTitleLink"
+                            style="color: #00A7CF !important; text-decoration-line: underline !important; cursor: pointer"
+                            [href]="openUserGuide()" target="_blank"> 
+                            LabView360 User Guide.pdf
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <app-sub-footer></app-sub-footer>
+    </div>
+</div>
+
+<div *ngIf="isDesktop" class="h-100 d-flex flex-column justify-content-between">
+    <div>
+        <header style="height: 92px; padding-left: 40px; width: 100vw;"
+            class="bg-white d-flex align-items-center header-title justify-content-between">
+            <div id="userTitle">User Guide</div>
+            <div *ngIf="isIRISUser" style="padding-right: 36px;">
+                <app-button text="New Visit" [background]="'#128474'" [width]="'180px'" [height]="'44px'"
+                    (onClick)="newVisitIris()" [id]="'btnNewVisitIris'" />
+            </div>
+            <ng-template *ngIf="!isIRISUser" [appHasAccessFeatures]="featureAccessMap.EditVisit" [appHasRoles]="[roles.User]">
+                <div style="padding-right: 36px;">
+                    <app-button text="New/Continue Visit" [background]="'#128474'" [width]="'180px'" [height]="'44px'"
+                        (onClick)="navigateToEnterBarcode()" [id]="'btnNewContinueVisit'" />
+                </div>
+            </ng-template>
+        </header>
+    </div>
+    <div class="wrapper-desktop-review" style="padding-left: 40px;">
+        <div>
+            <div class="parent-title" id="userGuideTitle">
+                Welcome to the User Guide! <br><br>
+                For detailed instructions and all necessary
+                information, please click link below to access the full guide:
+            </div>
+        </div>
+        <table class="w-100 requisition-wrapper" id="requisitionTable" style="width: 514px !important;">
+            <tr>
+                <th class="table-header" id="visitRequisition" style="font-weight: bold;">Document Path
+                </th>
+            </tr>
+            <tbody>
+                <tr>
+                    <td class="table-body">
+                        <a *ngIf="isIRISUser" id="userGuideTitleLink"
+                            style="color: #00A7CF !important; text-decoration-line: underline !important; cursor: pointer"
+                            [href]="openIRISUserGuide()" target="_blank"> 
+                            LabView360 IRIS User Guide.pdf
+                        </a>
+                        <a *ngIf="!isIRISUser" id="userGuideTitleLink"
+                            style="color: #00A7CF !important; text-decoration-line: underline !important; cursor: pointer"
+                            [href]="openUserGuide()" target="_blank"> 
+                            LabView360 User Guide.pdf
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

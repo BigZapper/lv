@@ -1,0 +1,14 @@
+<app-hybrid-modal [background]="'transparent'">
+    <div content>
+        <app-modal-desktop-layout [submitBtnText]="'Confirm'" [cancelBtnText]="'Cancel'"
+            [idSaveBtn]="'confirmChangeStatusUserBtn'" (action)="onClickModal($event)"
+            [idCancelBtn]="'cancelChangeStatusUserBtn'" [title]="'Confirm'"
+            [idTitle]="'cancelChangeStatusUserTitleDialog'" [paddingBody]="'20px 13px'" [bodyCenter]="true">
+            <div modal-body>
+                <div class="text-left">
+                    Are you sure, you want to {{isEnabled ? 'disable' : 'enable'}} the user?
+                </div>
+            </div>
+        </app-modal-desktop-layout>
+    </div>
+</app-hybrid-modal

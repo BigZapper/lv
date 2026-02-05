@@ -1,0 +1,43 @@
+<div class="search-visit-action" [id]="id" ngbDropdown>
+    <button data-bs-toggle="dropdown" class="action" #dropdownButton>
+        <img src="/assets/image/icon/ellipsis.svg" alt="bx error" />
+    </button>
+    <ul class="dropdown-menu" id="myList" aria-labelledby="dropdownButton" [class.search-shipments]="isSearchShipments"
+        [class.view-sample-receipt-history]="isViewSampleReceiptHistory" [class.view-order-kit]="isViewOrderkit"
+        [class.dropDownAdminProtocol]="isAdminProtocol">
+        <ng-container *ngFor="let action of actions">
+            <ng-container *ngTemplateOutlet="actionTemplate; context: {action: action}"></ng-container>
+        </ng-container>
+    </ul>
+</div>
+
+<!-- Template for action items (supports nested children) -->
+<ng-template #actionTemplate let-action="action">
+    <ng-template [appHasAccessFeatures]="action.access" [appHasRoles]="''">
+        <li [class]="action.disabled || action.disable ? 'disabled' : ''" 
+            [class.action-hover-check]="isHighLight"
+            [class.has-children]="action.childrens && action.childrens.length > 0"
+            (click)="onItemClick($event, action)" 
+            [id]="action.id">
+            <span class="action-label">{{action.name}}</span>
+            <img *ngIf="action.childrens && action.childrens.length > 0" 
+                 src="/assets/image/icon/chevron-right.svg" 
+                 alt="expand" 
+                 class="chevron-icon" />
+        </li>
+        <!-- Nested children items -->
+        <div *ngIf="action.childrens && action.childrens.length > 0" class="children-container">
+            <ng-container *ngFor="let child of action.childrens">
+                <ng-template [appHasAccessFeatures]="child.access" [appHasRoles]="''">
+                    <li [class]="child.disabled ? 'disabled' : ''" 
+                        [class.action-hover-check]="isHighLight"
+                        [class.child-item]="true"
+                        (click)="onItemClick($event, child)" 
+                        [id]="child.id">
+                        {{child.name}}
+                    </li>
+                </ng-template>
+            </ng-container>
+        </div>
+    </ng-template>
+</ng-template>

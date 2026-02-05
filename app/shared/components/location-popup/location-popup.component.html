@@ -1,0 +1,46 @@
+<app-hybrid-modal [background]="'transparent'">
+    <div content>
+        <app-modal-desktop-layout [cancelBtnText]="'Close'" [idCancelBtn]="'closeLocationPopupBtn'"
+            [title]="'All Locations'" [idTitle]="'locationPopupTitle'" [paddingBody]="'20px 13px'"
+            [showSubmitBtn]="false" (action)="onClickModal($event)">
+            <div modal-body>
+                <div class="cards-container">
+                    <div *ngFor="let item of locations; let i = index" class="result-card"
+                        [class.expanded]="isCardExpanded(i)" [id]="'popupCard' + i">
+                        <div class="card-header-row">
+                            <div class="card-header-content">
+                                <span class="card-label">Location :</span>
+                                <span class="card-value">{{item.locationName}}</span>
+                            </div>
+                            <div class="activeStatus">{{item.status}}</div>
+                        </div>
+
+                        <div class="card-body-row" (click)="toggleCardExpand(i)">
+                            <div class="card-body-content">
+                                <div class="card-info-group">
+                                    <div class="card-info-row">
+                                        <span class="card-label">Testing Frequency :</span>
+                                        <span class="card-value">{{item.testingFrequency}}</span>
+                                    </div>
+                                    <div class="card-info-row">
+                                        <span class="card-label">Comment: </span>
+                                        <span class="card-value"
+                                            [ngClass]="!isCardExpanded(i)?'commentCollasped':''">{{item.comment}}</span>
+                                    </div>
+                                    <div class="card-info-row">
+                                        <span class="card-label">Turn around time: </span>
+                                        <span class="card-value">{{item.turnAroundTime}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-link p-0 expand-btn">
+                                <img src="/assets/image/icon/dropdown-arrow-down.svg" alt="dropdown"
+                                    class="expand-icon-mobile" [class.rotated]="isCardExpanded(i)">
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </app-modal-desktop-layout>
+    </div>
+</app-hybrid-modal>

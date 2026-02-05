@@ -1,0 +1,21 @@
+<div class="accordion accordion-flush" [id]="id">
+    <div class="accordion-item" [style.border-bottom]="borderBottom">
+        <h2 (click)="clickCollapse()" class="accordion-header" [id]="id + 'flush-heading'">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" [class. collapsed]="!ariaExpanded"
+                [style.paddingBottom]="iris ? '10px' : ''" [style.background]="background"
+                [attr.data-bs-target]="'#' + id + 'flush-collapse'" [attr.aria-expanded]="ariaExpanded"
+                [attr.aria-controls]="id + 'flush-collapse'">
+                <ng-content select="[title]" [id]="expandIcon"></ng-content>
+            </button>
+        </h2>
+        <div [id]="id + 'flush-collapse'" class="accordion-collapse collapse" [class.show]="ariaExpanded"
+            [attr.aria-labelledby]="id + 'flush-heading'" [attr.data-bs-parent]="'#' + id">
+            <div [style.padding]="iris ? 'Opx 37px 37px 20px' : '10px 37px 37px 20px'">
+                <ng-content select="[body]"></ng-content>
+            </div>
+            <div class="accordion-action">
+                <ng-content select="[action]"></ng-content>
+            </div>
+        </div>
+    </div>
+</div>
