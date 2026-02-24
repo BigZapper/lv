@@ -1,0 +1,111 @@
+<div class="table-wrapper" [class. scrollY]="isScrollY">
+    <table>
+        <thead>
+            <tr>
+
+                <th *ngFor="let column of columns" [class]="column.class || 'text-left'"
+                    [class.sorted]="isSorted(column.key)" (click)="onHeaderClick(column)"
+                    [style.whiteSpace]="isScrollY ? 'nowrap' : ''"
+                    [style.cursor]="column. sortable !== false && showSortIcon ? 'pointer' : 'default'">
+                    <div class="d-flex align-items-center">
+                        <div *ngIf="!column. isCheckBox" class="pr-1">{{ column.title }}</div>
+                        app-checkbox-v2
+                        *ngIf="column.isCheckBox"
+                        id="headerUserCheckbox"
+                        (check)="onClickCheckBoxA11()"
+                        [model]="isCheckedAl1Box">
+                        </app-checkbox-v2>
+                        <img *ngIf="showSortIcon && column.sortable !== false" [src]="currentSort[column.key] === 'asc' ? '/assets/image/icon/asc.svg' :
+currentSort[column.key] === 'desc' ? '/assets/image/icon/des.svg' :
+'/assets/image/icon/sort.svg'" alt="sort" />
+
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        <tbody *ngIf="(!data || data.length === 0) && !isTableReportAdmin; else elseBlock" class="text-left bg-white"
+            style="padding: 14px 12px;">
+
+            <td [style.whiteSpace]="isScrollY ? 'nowrap' : ''">
+                <span id="emptyDataId">{{ emptyMessage }}</span>
+            </td>
+            </tr>
+        </tbody>
+        <ng-template #elseBlock>
+            <tbody>
+                <tr *ngFor="let row of data; let i = index" [class.noBorder]="isNoBorder" [class.row-editing]="enableEdit && isEditing(i)">
+                    <td *ngFor="let column of columns" [class]="column.class || 'text-left'"
+                        [style.whiteSpace]="isScrollY ? 'nowrap' : ' '">
+                        <!-- Action column with edit buttons -->
+                        <ng-container *ngIf="column.isAction && enableEdit">
+                            <button *ngIf="!isEditing(i)" class="icon-button" type="button" aria-label="Edit"
+                                (click)="startEdit(row, i)">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L21 5.75z" />
+                                </svg>
+                            </button>
+                            <div *ngIf="isEditing(i)" class="action-group">
+                                <button class="icon-button success" type="button" aria-label="Save"
+                                    (click)="saveEdit(row, i)">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M9 16.2l-3.5-3.5L4 14.2 9 19l12-12-1.5-1.5z" />
+                                    </svg>
+                                </button>
+                                <button class="icon-button danger" type="button" aria-label="Cancel"
+                                    (click)="cancelEdit(i)">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.4l-6.3 6.3-1.41-1.41L9.17 12l-6.3-6.29L4.3 4.3l6.29 6.3 6.3-6.3z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </ng-container>
+                        <!-- Regular action column -->
+                        <ng-container *ngIf="column.isAction && !enableEdit">
+                            <app-search-visit-action [id]="'user-action'+i" [actions]="userActions"
+                                (visitAction)="onItemClick($event, row)">
+                            </app-search-visit-action>
+                        </ng-container>
+
+                        <!-- Edit mode fields -->
+                        <ng-container *ngIf="!column.isCheckBox && !column.isAction">
+                            <ng-container *ngIf="enableEdit && isEditing(i) && isEditableColumn(column.key); else displayCell">
+                                <app-multi-selection
+                                    [options]="getOptions(column.key)"
+                                    [multiSelect]="column.multiSelect !== false"
+                                    [isRequired]="false"
+                                    [label]="getEditLabel(column.key)"
+                                    [allOptionsText]="column.allOptionsText || 'All Items'"
+                                    [ngModelOptions]="{ standalone: true }"
+                                    [(ngModel)]="editRowValues[column.key]">
+                                </app-multi-selection>
+                            </ng-container>
+                            <ng-template #displayCell>
+                                <a *ngIf="isLinkColumn(column.key)" class="link-primary"
+                                    (click)="navigateToTestDetails(row)">
+                                    {{ getCellValue(row, column.key) }}
+                                </a>
+                                <span *ngIf="!isLinkColumn(column.key)">
+                                    <span *ngIf="!isTooltipColumn(row, column.key); else tooltipCell">{{ getCellValue(row, column.key)
+                                        }}</span>
+                                    <ng-template #tooltipCell>
+                                        <span style="cursor: pointer;" [tooltipClass]="'table-tooltip'" placement="bottom"
+                                            [ngbTooltip]="getCellFullContect(row, column.key)">{{ getCellValue(row, column.key)
+                                            }}</span>
+                                    </ng-template>
+                                </span>
+                            </ng-template>
+                        </ng-container>
+
+                        <!-- Checkbox column -->
+                        <app-checkbox-v2 *ngIf="column.isCheckBox" [id]="'Checkbox'+i" (check)="onClickCheckBox(i)"
+                            [model]="isCheckedBox(i)">
+                        </app-checkbox-v2>
+                    </td>
+                </tr>
+            </tbody>
+        </ng-template>
+    </table>
+    <div *ngIf="isTableReportAdmin && (!data || data.length === 0)" id="usersEmptyMessage" class="text-left bg-white"
+        style="padding: 14px 12px;">{{ emptyMessage }}</div>
+
+</div>

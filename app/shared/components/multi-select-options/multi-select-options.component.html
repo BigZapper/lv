@@ -1,0 +1,148 @@
+<div class="multi-selection">
+    <div class="field-wrapper" #dropdownWrapper>
+        <!-- Label - show floating when has selections OR dropdown is open -->
+        <label *ngIf="selectedOptions. length > 0 | | showDropdown" class="field-label">
+            {{ label }}
+            <span *ngIf="isRequired" class="required"> *< /span>
+        </label>
+
+        <!-- Input Field -->
+        <div class="input-wrapper"
+            [ngClass]="{'has-many': hasMoreChips && !showMore && multiSelect && !displayAsText, 'has-selections': selectedOptions.length > 0, 'single-select-mode' : !multiSelect}"
+            (click)="toggleDropdown($event)">
+            <div class="selected-chips" [ngClass]="{'show-more': showMore, 'text-mode': displayAsText}">
+                <!-- Multi-select: Show as semicolon-separated text -->
+                <ng-container *ngIf="multiSelect && displayAsText && selectedOptions.length > 0">
+                    <span class="selected-text-truncate" [title]="selectedOptionsText">
+                        {{ selectedOptionsText }}
+                    </span>
+                </ng-container>
+
+                <!-- Multi-select: Show chips -->
+                <ng-container *ngIf="multiSelect && !displayAsText">
+                    <div *ngFor="let option of visibleChips" class="chip">
+                        <span class="chip-text">{{ option.text }}</span>
+                        <svg class="chip-remove" (click)="removeOption(option, $event)" width="16" height="16"
+                            viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M7.99967 1.33333C4.31301 1.33333 1.33301 4.31333 1.33301 8C1.33301 11.6867 4.31301 14.6667 7.99967 14.6667C11.6863 14.6667 14.6663 11.6867 14.6663 8C14.6663 4.31333 11.6863 1.33333 7.99967 1">
+                        </svg>
+                    </div>
+                </ng-container>
+
+                <!-- Single-select: Show text only -->
+                <span *ngIf="!multiSelect && selectedOptions.length > 0" class="selected-text">
+                    {{ selectedOptions[0].text }}
+                </span>
+
+                <span *ngIf="selectedOptions.length === 0 && !showDropdown" class="selection-empty">
+                    {{ label }}<span *ngIf="isRequired" class="empty-required"> *</span>
+                </span>
+            </div>
+            <div class="input-actions">
+                <span *ngIf="hasMoreChips && !showMore && multiSelect && !displayAsText" class="more-indicator"
+                    (click)="toggleShowMore($event)">
+                    +{{ selectedOptions.length - 3 }}
+                </span>
+                <img src="/assets/image/icon/dropdown-arrow-down.svg" alt="dropdown" class="dropdown-icon">
+            </div>
+        </div>
+
+        <!-- Dropdown -->
+        <div *ngIf="showDropdown" class="dropdown" #dropdownMenu (click)="$event.stopPropagation()">
+            <div class="dropdown-header">
+                <!-- Search Input -->
+                <div class="search-wrapper">
+                    <input type="text" class="search-input" placeholder="Search here ... " [(ngModel)]="searchText"
+                        (input)="onSearchChange()" (click)="$event.stopPropagation()">
+                </div>
+
+                <!-- Protocol List -->
+                <div class="protocol-list-wrapper">
+                    <!-- Non-Virtual Scroll List -->
+                    <div class="protocol-list" [ngClass]="{'single-select-list': !multiSelect}"
+                        *ngIf="!isVirtualScroll">
+                        <!-- All Options (only for multi-select) -->
+                        <div *ngIf="multiSelect" class="protocol-item" (click)="toggleAllOptions()">
+                            <app-checkbox [model]="allOptionsSelected" [defaultColor]="'#fff'" colorChecked="green"
+                                (check)="toggleAllOptions()">
+                            </app-checkbox>
+                            <span class="protocol-text">{{ allOptionsText }}</span>
+                        </div>
+
+                        <!-- Individual Options -->
+                        <div *ngFor="let option of filteredOptions" class="protocol-item"
+                            [class.selected]="!multiSelect && isOptionSelected(option)" (click)="toggleOption(option)">
+                            <app-checkbox *ngIf="multiSelect" [model]="isOptionSelected(option)" [defaultColor]="'#fff'"
+                                colorChecked="green" (check)="toggleOption(option)">
+                            </app-checkbox>
+                            <span class="protocol-text">{{ option.text }}</span>
+                            <!-- Check icon for single select mode -->
+                            <svg *ngIf="!multiSelect" class="check-icon" width="20" height="20" viewBox="0 0 20 20"
+                                fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 10L8 14L16 6" stroke="#128474" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Virtual Scroll List -->
+                    <cdk-virtual-scroll-viewport *ngIf="isVirtualScroll" [itemSize]="itemSize"
+                        class="protocol-list virtual-scroll" [ngClass]="{'single-select-list': !multiSelect}"
+                        (scroll)="onScroll()">
+                        <!-- All Options (static, always shown) - only for multi-select -->
+                        <div *ngIf="multiSelect" class="protocol-item" (click)="toggleAllOptions()">
+                            <app-checkbox [model]="allOptionsSelected" [defaultColor]="'#fff'" colorChecked="green"
+                                (check)="toggleAllOptions()">
+                            </app-checkbox>
+                            <span class="protocol-text">{{ allOptionsText }}</span>
+                        </div>
+
+                        <!-- Individual Options + Skeleton Items (virtualized together) -->
+                        <ng-container *cdkVirtualFor="let item of displayOptionsWithSkeleton">
+                            <!-- Real Option -->
+                            <div *ngIf="!isSkeleton(item)" class="protocol-item"
+                                [class.selected]="!multiSelect && isOptionSelected(item)" (click)="toggleOption(item)">
+                                <app-checkbox *ngIf="multiSelect" [model]="isOptionSelected(item)"
+                                    [defaultColor]="'#fff'" colorChecked="green" (check)="toggleOption(item)">
+                                </app-checkbox>
+                                <span class="protocol-text">{{ item.text }}</span>
+                                <!-- Check icon for single select mode -->
+                                <svg *ngIf="!multiSelect" class="check-icon" width="20" height="20" viewBox="0 0 20 20"
+                                    fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 10L8 14L16 6" stroke="#128474" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </div>
+
+                            <!-- Skeleton Item -->
+                            <div *ngIf="isSkeleton(item)" class="protocol-item skeleton">
+                                <div *ngIf="multiSelect" class="skeleton-checkbox"></div>
+                                <div class="skeleton-text"></div>
+                            </div>
+                        </ng-container>
+                    </cdk-virtual-scroll-viewport>
+                </div>
+            </div>
+
+            <!-- Dropdown Footer (only for multi-select) -->
+            <div *ngIf="multiSelect" class="dropdown-footer">
+                <!-- <app-button
+text="Cancel"
+[background ]="'white'"
+[outlined]="true"
+[width]="'auto'"
+[height]="'40px'"
+(onClick)="onCancel()">
+</app-button> -->
+
+                <app-button text="Cancel" [background]="'#128474'" [height]="'40px'" [outlined]="true"
+                    className="previous-btn" [width]="'100%'" [id]="'btnClear'" (click)="onCancel()" />
+
+                <app-button text="Apply" [background]="'#128474'" [width]="'auto'" [height]="'40px'"
+                    (onClick)="onApply()">
+                </app-button>
+            </div>
+        </div>
+    </div>
+</div>

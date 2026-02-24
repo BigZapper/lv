@@ -9,6 +9,8 @@ import { DialogActions } from '@app/store/dialog';
 import { AdminManagementService } from '@app/shared/services';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { DropdownActionItem } from '@app/shared/components/dropdown-action/dropdown-action.component';
+import { ConfirmDocumentCLickEvent } from '@app/shared/components/alert/alert.component';
+import { AlertType } from '@app/shared/components/alert/alert.component';
 
 interface Protocol {
     protocolId: string;
@@ -18,6 +20,7 @@ interface Protocol {
     status: 'ACTIVE' | 'CLOSED';
     overwriteStatus: boolean;
     overwriteValue: 'OPEN' | 'CLOSED';
+    id?: string
 }
 
 interface AssociatedUser {
@@ -41,7 +44,6 @@ interface Filters {
     country: string;
     site: string;
     userStatus: string;
-
 }
 
 interface SelectOption {
@@ -49,10 +51,34 @@ interface SelectOption {
     text: string;
 }
 
+type SendingEmailType = 'sendEmail' | 'resendEmail' | 'sendEmailAll' | 'resendEmailAll';
+
+interface ConfirmSendingEmailModalContent {
+    title: string;
+    content: string;
+    emails: string[];
+    submitLabel: string;
+    cancelLabel: string;
+    widthSubmitBtn: string;
+    type: SendingEmailType;
+    widthSubmitBtnLoading: string;
+    isSendingEmail: boolean;
+    isLoadingEmail: boolean;
+    isEmailDisplay: boolean;
+}
+
+interface SendingEmailAlertContent {
+    alertType: AlertType,
+    title: string;
+    subtitle: string;
+    type: SendingEmailType
+    showIcon: boolean;
+}
+
 @Component({
     selector: 'app-manage-protocols',
-    templateUrl: './manage-protocols. component.html',
-    styleUrls: ['./manage-protocols. component.scss']
+    templateUrl: './manage-protocols.component.html',
+    styleUrls: ['./manage-protocols.component.scss']
 })
 
 export class ManageProtocolsComponent implements OnInit, OnDestroy {
@@ -67,25 +93,32 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
     filterForm !: FormGroup;
     searchProtocolForm !: FormGroup;
     searchText: string = '';
+    searchProtocolValue: string = '';
+    editUserData: any;
+    reportPermissionsData: any;
 
     protocolDetail !: any;
     totalActivatedProtocols = 0;
+    usersInSelectedProtocol: any[] = [
+        { id: 'email 1', text: 'email 1', selected: false },
+        { id: 'email 2', text: 'email 2', selected: false },
+        { id: 'email 3', text: 'email 3', selected: false },
+        { id: 'email 4', text: 'email 4', selected: false },
+        { id: 'email 5', text: 'email 5', selected: false },
+        { id: 'email 6', text: 'email 6', selected: false },
+        { id: 'email 7', text: 'email 7', selected: false },
+        { id: 'email 8', text: 'email 8', selected: false },
+        { id: 'email 9', text: 'email 9', selected: false },
+        { id: 'email 10', text: 'email 10', selected: false },
+        { id: 'email 11', text: 'email 11', selected: false },
+    ];
 
     // Filter Options
-    userRoleOptions: SelectOption[] = [
-        { text: 'Sponsor Contact', value: 'Sponsor Contact' },
-        { text: 'CRO Contact', value: 'CRO Contact' },
-        { text: 'Medical Monitor', value: 'Medical Monitor' },
-        { text: 'CRA', value: 'CRA' },
-        { text: 'External User - Other', value: 'External User - Other' },
-        { text: 'Internal User - Other', value: 'Internal User - Other' },
-        { text: 'Internal User - Other 2', value: 'Internal User - Other 2' },
-        { text: 'Reporting Admin', value: 'Reporting Admin' }
-    ]
+    userRoleOptions: SelectOption[] = [];
+
     regionOptions: SelectOption[] = [];
 
-    countryOptions: SelectOption[]
-        = [];
+    countryOptions: SelectOption[] = [];
 
     siteOptions: SelectOption[] = [];
 
@@ -93,12 +126,23 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
         { value: 'Active', text: 'Active' },
         { value: 'Inactive', text: 'Inactive' }
     ]
+
+    studyTypeOptions: any[] = [
+        { value: 'ICOLIMS', text: 'ICOLIMS' },
+        { value: 'IRIS', text: 'IRIS' }
+    ]
+
     // Dropdown state
     showAddUserDropdown = false;
+    showReportPermissionsModal = false;
+    showStorageServiceBlindingModal = false;
+
+    selectedProtocol: Protocol | null = null;
     addUserDropdownItems: DropdownActionItem[] = [
         { text: 'Add user manually', selected: false, value: 'manual', icon: true },
         { text: 'Copy from other protocol', selected: false, value: 'copy', icon: true }
     ];
+
     showMoreActionDropdown = false;
     moreActionDropdownItems: DropdownActionItem[] = [
         {
@@ -112,21 +156,32 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
     ]
     // Modal state
     showAddUserModal = false;
-    showRegistrationEmailModal = false;
-    showSendEmailConfirmModal = false;
+    showEditUserModal = false;
+
+    showSendAllEmailConfirmModal = false;
     showResendEmailConfirmModal = false;
+    showCopyUsersModal = false;
 
     showProtocolList = true;
 
     protocols: Protocol[] = [];
 
-    selectedProtocol: Protocol | null = null;
     expandedProtocols: Set<string> = new Set();
 
     associatedUsers: AssociatedUser[] = [];
 
     selectAll = false;
     selectedUsers: Set<number> = new Set();
+
+    // Alert state
+    alerts = {
+        email: {
+            send: { success: false, failed: false, inBackground: false },
+            resend: { success: false, failed: false, inBackground: false }
+        },
+        copyUser: { success: false, failed: false },
+        serviceBlinding: { success: false }
+    };
 
     // Pagination
     page = 1;
@@ -158,6 +213,12 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
     ]
 
     @ViewChild(CdkVirtualScrollViewport) viewport !: CdkVirtualScrollViewport;
+    alertTimeouts = {
+        email: {
+            send: { success: null as any, failed: null as any, background: null as any },
+            resend: { success: null as any, failed: null as any, background: null as any }
+        }
+    };
 
     constructor(
         private store: Store,
@@ -499,7 +560,6 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
         this.closeAddUserDropdown();
     }
     onRegistrationModalClose(): void {
-        this.showRegistrationEmailModal = false;
         this.closeMoreActionDropdown();
     }
 
@@ -510,9 +570,9 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
         }));
 
         if (item.value === 'send') {
-            this.showSendEmailConfirmModal = true;
+            this.openEmailConfirmModal('send');
         } else if (item.value === 'resend') {
-            this.showResendEmailConfirmModal = true;
+            this.openEmailConfirmModal('resend');
         } else if (item.value === 'report') {
             // TODO: Implement manage report permissions
             this.closeMoreActionDropdown();
@@ -522,43 +582,279 @@ export class ManageProtocolsComponent implements OnInit, OnDestroy {
         }
     }
 
-    onSendEmailConfirm(): void {
-        // TODO: Implement send email API call
-        const protocolId = this.selectedProtocol?.protocolId || '';
-        console.log('Sending email to protocol:', protocolId);
-        
-        // Show success message
-        this.store.dispatch(DialogActions.showSnackBar({
-            message: `Email has been sent successfully to all the users in ${protocolId}.`,
-            status: 'success'
-        }));
-        
-        this.showSendEmailConfirmModal = false;
-        this.closeMoreActionDropdown();
+    showSendingEmailAlert = false;
+    showSendingEmailBackgroundAlert = false;
+    sendingEmailAlertContent: SendingEmailAlertContent = {
+        alertType: 'success',
+        title: '',
+        subtitle: '',
+        type: 'sendEmail',
+        showIcon: true
+    }
+    showSendingEmailBackgroundTimeOut?: any;
+
+
+    // Registration email confirm modal
+    showRegistrationEmailConfirmModal = false;
+    sendingEmailConfirmModalContent: ConfirmSendingEmailModalContent = {
+        title: '',
+        content: '',
+        submitLabel: '',
+        widthSubmitBtn: '',
+        widthSubmitBtnLoading: '',
+        cancelLabel: 'Cancel',
+        emails: [],
+        type: 'sendEmail',
+        isSendingEmail: false,
+        isLoadingEmail: false,
+        isEmailDisplay: true
     }
 
-    onSendEmailCancel(): void {
-        this.showSendEmailConfirmModal = false;
-        this.closeMoreActionDropdown();
+    showSendingEmailAlertWithTimeOut() {
+        // Clear timeout of the sending email background alert
+        if (this.showSendingEmailBackgroundTimeOut) {
+            clearTimeout(this.showSendingEmailBackgroundTimeOut);
+            this.showSendingEmailBackgroundTimeOut = null
+        }
+
+        this.showSendingEmailAlert = true;
+        setTimeout(() => {
+            this.showSendingEmailAlert = false;
+        }, 8000)
+    }
+    showSendingEmailBackgroundAlertWithTimeOut() {
+        this.showSendingEmailBackgroundAlert = true;
+        setTimeout(() => {
+            this.showSendingEmailBackgroundAlert = false;
+        }, 8000)
     }
 
-    onResendEmailConfirm(): void {
-        // TODO: Implement resend email API call
-        const protocolId = this.selectedProtocol?.protocolId || '';
-        console.log('Resending email to protocol:', protocolId);
-        
-        // Show success message
-        this.store.dispatch(DialogActions.showSnackBar({
-            message: `Email has been re-sent successfully to all the users in ${protocolId}.`,
-            status: 'success'
-        }));
-        
-        this.showResendEmailConfirmModal = false;
-        this.closeMoreActionDropdown();
+
+    setTimeOutToShowSendingEmailBackgroundAlert(type: SendingEmailType) {
+        this.updateSendingEmailAlertContent(type, 'success', true);
+        this.showSendingEmailBackgroundTimeOut = setTimeout(() => {
+            this.showRegistrationEmailConfirmModal = false;
+            this.showSendAllEmailConfirmModal = false;
+            this.showResendEmailConfirmModal = false;
+            this.showSendingEmailBackgroundAlertWithTimeOut()
+        }, 3000)
     }
 
-    onResendEmailCancel(): void {
-        this.showResendEmailConfirmModal = false;
-        this.closeMoreActionDropdown();
+    updateSendingEmailAlertContent(type: SendingEmailType, alertType: AlertType, background: boolean = false) {
+        if (type == 'sendEmail') {
+            this.sendingEmailAlertContent = {
+                ... this.sendingEmailAlertContent,
+                alertType,
+                title: alertType === 'success' ? 'Success!' : 'Failed!',
+                subtitle: alertType === 'success' ?
+                    `Email has been sent successfully to the selected users in ${this.selectedProtocol?.studyCode}.` :
+                    'The email was not sent successfully. Please try again.',
+                type: 'sendEmail',
+            }
+            if (background) {
+                this.sendingEmailAlertContent = {
+                    ... this.sendingEmailAlertContent,
+                    subtitle: 'Emails are being sent in the background. You will receive a success message once all emails are sent successfully.',
+                }
+            }
+        } else if (type == 'resendEmail') {
+            this.sendingEmailAlertContent = {
+                ... this.sendingEmailAlertContent,
+                alertType,
+                title: alertType === 'success' ? 'Success!' : 'Failed!',
+                subtitle: alertType === 'success' ?
+                    `Email has been re-sent successfully to the selected users in ${this.selectedProtocol?.studyCode}.` :
+                    'The email was not re-sent successfully. Please try again.',
+                type: 'resendEmail',
+            }
+
+            if (background) {
+                this.sendingEmailAlertContent = {
+                    ... this.sendingEmailAlertContent,
+                    subtitle: 'Emails are being re-sent in the background. You will receive a success message once all emails are sent successfully.',
+                }
+            }
+        } else if (type == 'sendEmailAll') {
+            this.sendingEmailAlertContent = {
+                ... this.sendingEmailAlertContent,
+                alertType,
+                title: alertType === 'success' ? 'Success!' : 'Failed!',
+                subtitle: alertType === 'success' ?
+                    `Email has been sent successfully to all the users in ${this.selectedProtocol?.studyCode}.` :
+                    'The email was not sent successfully. Please try again.',
+                type: 'sendEmail',
+            }
+            if (background) {
+                this.sendingEmailAlertContent = {
+                    ... this.sendingEmailAlertContent,
+                    subtitle: 'Emails are being sent in the background. You will receive a success message once all emails are sent successfully. ',
+                }
+            }
+        } else if (type == 'resendEmailAll') {
+            this.sendingEmailAlertContent = {
+                ... this.sendingEmailAlertContent,
+                alertType,
+                title: alertType === 'success' ? 'Success!' : 'Failed!',
+                subtitle: alertType === 'success' ?
+                    `Email has been re-sent successfully to all the users in ${this.selectedProtocol?.studyCode}.` :
+                    'The email was not sent successfully. Please try again.',
+                type: 'sendEmail',
+            }
+            if (background) {
+                this.sendingEmailAlertContent = {
+                    ... this.sendingEmailAlertContent,
+                    subtitle: 'Emails are being re-sent in the background. You will receive a success message once all emails are sent successfully.',
+                }
+            }
+        }
     }
+
+    async onSendAllEmailConfirm() {
+    const sendEmailType: SendingEmailType = 'sendEmailAll';
+    const protocolId = this.selectedProtocol?.protocolId;
+
+    if (!protocolId) {
+        this.updateSendingEmailAlertContent(sendEmailType, 'error');
+        this.showSendAllEmailConfirmModal = false;
+        this.showSendingEmailAlertWithTimeOut();
+        return;
+    }
+    this.isLoading = true;
+    this.sendingEmailConfirmModalContent = {
+        ... this.sendingEmailConfirmModalContent,
+        isSendingEmail: true
+    };
+
+    this.setTimeOutToShowSendingEmailBackgroundAlert(sendEmailType);
+
+    try {
+        const response = await firstValueFrom(
+            this.adminManagementService.sendProtocolAccessNotification({ protocolId }))
+
+        this.updateSendingEmailAlertContent(
+            sendEmailType,
+            response?.data?.success ? 'success' : 'error'
+        );
+    }
+    catch {
+        this.updateSendingEmailAlertContent(sendEmailType, 'error');
+    } finally {
+        this.isLoading = false;
+
+        this.sendingEmailConfirmModalContent = {
+            ...this.sendingEmailConfirmModalContent,
+            isSendingEmail: false
+        }
+        this.showSendAllEmailConfirmModal = false;
+        this.showSendingEmailAlertWithTimeOut();
+    }
+}
+
+openEmailConfirmModal(type: 'send' | 'resend'): void {
+    this.setEmailConfirmModal(type, true);
+}
+
+    async onEmailConfirm(type: 'send' | 'resend') {
+    this.setEmailConfirmModal(type, false);
+    this.closeMoreActionDropdown();
+    await this.handleEmailOperation(type);
+}
+
+onEmailCancel(type: 'send' | 'resend'): void {
+    this.setEmailConfirmModal(type, false);
+    this.closeMoreActionDropdown();
+}
+
+    private setEmailConfirmModal(type: 'send' | 'resend', isOpen: boolean): void {
+    if(type === 'send') {
+    this.showSendAllEmailConfirmModal = isOpen;
+} else {
+    this.showResendEmailConfirmModal = isOpen;
+}
+    }
+
+    private async handleEmailOperation(type: 'send' | 'resend'): Promise < void> {
+    const protocolId = this.selectedProtocol?.protocolId || '';
+    const studyCode = this.selectedProtocol?.studyCode || '';
+    console.log(`${type === 'send' ? 'Sending' : 'Resending'} email to protocol:`, protocolId);
+
+    this.isLoading = true;
+
+    // Set timeout to show background message if operation takes longer than 3 seconds
+    this.alertTimeouts.email[type].background = setTimeout(() => {
+        this.showBackgroundEmailAlert(type);
+    }, 3000);
+
+    try {
+        const response = await firstValueFrom(
+            this.adminManagementService.sendProtocolAccessNotification(protocolId)
+        );
+
+        // Clear background check timeout
+        if(this.alertTimeouts.email[type].background) {
+    clearTimeout(this.alertTimeouts.email[type].background);
+    this.alertTimeouts.email[type].background = null;
+}
+
+// Hide background message if it was shown
+this.hideBackgroundEmailAlert(type);
+
+if (response.data) {
+    this.showSuccessAlert(type, studyCode);
+} else {
+    this.showFailureAlert(type);
+}
+        } catch (error) {
+    console.log(error);
+
+    // Clear background check timeout
+    if (this.alertTimeouts.email[type].background) {
+        clearTimeout(this.alertTimeouts.email[type].background);
+        this.alertTimeouts.email[type].background = null;
+    }
+
+    // Hide background message if it was shown
+    this.hideBackgroundEmailAlert(type);
+
+    this.showFailureAlert(type);
+} finally {
+    this.isLoading = false;
+}
+    }
+
+    private showBackgroundEmailAlert(type: 'send' | 'resend'): void {
+    this.alerts.email[type].inBackground = true;
+}
+
+    private hideBackgroundEmailAlert(type: 'send' | 'resend'): void {
+    this.alerts.email[type].inBackground = false;
+}
+
+    private showSuccessAlert(type: 'send' | 'resend', studyCode: string): void {
+    if(this.alertTimeouts.email[type].success) {
+    clearTimeout(this.alertTimeouts.email[type].success);
+}
+
+this.alerts.email[type].success = true;
+
+this.alertTimeouts.email[type].success = setTimeout(() => {
+    this.alerts.email[type].success = false;
+}, 8000);
+    }
+
+    private showFailureAlert(type: 'send' | 'resend'): void {
+    if(this.alertTimeouts.email[type].failed) {
+    clearTimeout(this.alertTimeouts.email[type].failed);
+}
+
+this.alerts.email[type].failed = true;
+
+this.alertTimeouts.email[type].failed = setTimeout(() => {
+    this.alerts.email[type].failed = false;
+}, 8000);
+    }
+
+onCloseEmailAlert(type: 'send' | 'resend', status: 'success' | 'failed' = 'success'): void {
+    this.alerts.email[type][status] = false;
+}
 }

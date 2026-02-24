@@ -394,45 +394,57 @@
     <!-- Add User Modal -->
     <app-add-user-modal *ngIf="isDesktop" [show]="showAddUserModal" [userRoleOptions]="userRoleOptions"
         [regionOptions]="regionOptions" [countryOptions]="countryOptions" [siteOptions]="siteOptions"
-        [userStatusOptions]="userStatusOptions" (save)="onAddUserModalSave($event)"
-        (close)="onAddUserModalClose()">
+        [userStatusOptions]="userStatusOptions" (save)="onAddUserModalSave($event)" (close)="onAddUserModalClose()">
     </app-add-user-modal>
 
-    <!-- Registration email -->
-     <app-registration-email-modal
-        *ngIf="isDesktop"
-        [show]="showRegistrationEmailModal"
-        [title]="'Send'"
-        ()
 
     <!-- Send Email Confirmation Modal -->
-    <app-hybrid-modal *ngIf="showSendEmailConfirmModal" [background]="'transparent'">
-        <div content>
-            <app-modal-desktop-layout [submitBtnText]="'Send Email'" [cancelBtnText]="'Cancel'"
-                [idSaveBtn]="'confirmSendEmailBtn'" (action)="$event === 1 ? onSendEmailConfirm() : onSendEmailCancel()"
-                [idCancelBtn]="'cancelSendEmailBtn'" [title]="'Confirm to send email'"
-                [idTitle]="'confirmSendEmailTitle'" [paddingBody]="'20px 13px'" [bodyCenter]="false">
-                <div modal-body>
-                    <div class="text-left">
-                        Are you sure you want to send email to all the associated users in {{selectedProtocol?.protocolId}}?
-                    </div>
-                </div>
-            </app-modal-desktop-layout>
+    <app-modal-desktop-layout *ngIf="showSendEmailConfirmModal" [submitBtnText]="'Send Email'"
+        [cancelBtnText]="'Cancel'" [idSaveBtn]="'confirmSendEmailBtn'"
+        (action)="$event === 1 ? onSendAllEmailConfirm() : onEmailCancel('send')" [idCancelBtn]="'cancelSendEmailBtn'"
+        [title]="'Confirm to send email'" [widthDesktop]="'704px'" [idTitle]="'confirmSendEmailTitle'"
+        [paddingBody]="'20px 13px'" [bodyCenter]="false" [isHighZIndex]="true">
+        <div modal-body>
+            <div class="text-left" id="sendEmailConfirm">
+                Are you sure you want to send email to all the associated users in {{selectedProtocol ?. studyCode}}?
+            </div>
         </div>
-    </app-hybrid-modal>
+    </app-modal-desktop-layout>
 
     <!-- Resend Email Confirmation Modal -->
-    <app-hybrid-modal *ngIf="showResendEmailConfirmModal" [background]="'transparent'">
-        <div content>
-            <app-modal-desktop-layout [submitBtnText]="'Resend Email'" [cancelBtnText]="'Cancel'"
-                [idSaveBtn]="'confirmResendEmailBtn'" (action)="$event === 1 ? onResendEmailConfirm() : onResendEmailCancel()"
-                [idCancelBtn]="'cancelResendEmailBtn'" [title]="'Confirm to resend email'"
-                [idTitle]="'confirmResendEmailTitle'" [paddingBody]="'20px 13px'" [bodyCenter]="false">
-                <div modal-body>
-                    <div class="text-left">
-                        Are you sure you want to resend email to all the associated users in {{selectedProtocol?.protocolId}}?
-                    </div>
-                </div>
-            </app-modal-desktop-layout>
+    <app-modal-desktop-layout *ngIf="showResendEmailConfirmModal" [submitBtnText]="'Resend Email'"
+        [cancelBtnText]="'Cancel'" [idSaveBtn]="'confirmResendEmailBtn'"
+        (action)="$event === 1 ? onEmailConfirm('resend') : onEmailCancel('resend')" [idCancelBtn]="'cancelResendEmailBtn'"
+        [title]="'Confirm to resend email'" [widthDesktop]="'704px'" widthBtn="120px"
+        [idTitle]="'confirmResendEmailTitle'" [paddingBody]="'20px 13px'" [bodyCenter]="false" [isHighZIndex]="true">
+        <div modal-body>
+            <div class="text-left" id="resendEmailConfirm">
+                Are you sure you want to resend email to all the associated users in {{selectedProtocol ?. studyCode}}?
+            </div>
         </div>
-    </app-hybrid-modal>
+    </app-modal-desktop-layout>
+
+    <!-- Alert -->
+    <app-alert *ngIf="alerts.email.send.inBackground" type="info" 
+        [message]="'Emails are being sent in the background. You will receive a success message once all emails are sent successfully.'"
+        (close)="alerts.email.send.inBackground = false"></app-alert>
+
+    <app-alert *ngIf="alerts.email.resend.inBackground" type="info"
+        [message]="'Emails are being resent in the background. You will receive a success message once all emails are sent successfully.'"
+        (close)="alerts.email.resend.inBackground = false"></app-alert>
+
+    <app-alert *ngIf="alerts.email.send.success" type="success" 
+        [message]="'Email has been sent successfully to all the users in ' + (selectedProtocol?.studyCode || '') + '.'"
+        (close)="onCloseEmailAlert('send', 'success')"></app-alert>
+
+    <app-alert *ngIf="alerts.email.resend.success" type="success"
+        [message]="'Email has been resent successfully to all the users in ' + (selectedProtocol?.studyCode || '') + '.'" 
+        (close)="onCloseEmailAlert('resend', 'success')"></app-alert>
+
+    <app-alert *ngIf="alerts.email.send.failed" type="error"
+        [message]="'Failed to send emails. Please try again later.'" 
+        (close)="onCloseEmailAlert('send', 'failed')"></app-alert>
+
+    <app-alert *ngIf="alerts.email.resend.failed" type="error"
+        [message]="'Failed to resend emails. Please try again later.'" 
+        (close)="onCloseEmailAlert('resend', 'failed')"></app-alert>
