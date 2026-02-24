@@ -2,8 +2,8 @@ import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { SelectionOption } from '@app/shared/components/multi-select-options/multi-select-options. component';
-import { AllCheckboxState, CheckboxEvent, EditableRowUpdate, SortEvent, TableColumn } from '@app/shared/components/reusable-table/reusable-table.component';
-import { AdminManagementService, GetActivatedProtocolParams } from '@app/shared/services';
+import { AllCheckboxState, CheckboxEvent, EditableRowUpdate, ReusableTableComponent, SortEvent, TableColumn } from '@app/shared/components/reusable-table/reusable-table.component';
+import { AdminManagementService, GetActivatedProtocolParams, DebounceService, GetReportProfilesByProtocolParam } from '@app/shared/services';
 import { DialogActions } from '@app/store/dialog';
 import { Store } from '@ngrx/store';
 import { debounceTime, distinctUntilChanged, firstValueFrom, Subject, takeUntil } from 'rxjs';
@@ -19,15 +19,15 @@ interface Tab {
 }
 
 interface Profile {
-    profileId ?: string,
+    profileId?: string,
     studyTestId: string,
     testId: string[],
     profileName: string,
     cohortId: string[],
     visitId: string[],
-    blindOrHide ?: string,
-    protocolId ?: string,
-    isDefault ?: boolean
+    blindOrHide?: string,
+    protocolId?: string,
+    isDefault?: boolean
 }
 
 interface Protocol {
@@ -61,7 +61,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     profiles: Profile[] = []
     selectedProfile: Profile | null = null
-    selectedProfileCheckbox = new Set<Profile>();
+    selectedProfileByCheckbox = new Set<Profile>();
 
     // Profiles Virtual Scroll
     totalProfiles: number = 0;
@@ -104,8 +104,8 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     hasMoreProtocols = true;
 
     profileStatusOptions: any[] = [
-    { value: 'Blind', text: 'Blind' },
-    { value: 'Hide', text: 'Hide' }
+        { value: 'Blind', text: 'Blind' },
+        { value: 'Hide', text: 'Hide' }
     ];
     testOptions: any[] = [
     ];
@@ -123,6 +123,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     sortField = 'Tests';
     sortType = 2;
     profileDataTable: any = [];
+    profileDataTableRaw: Map<number, any> = new Map(); // Store original data for edit operations
     page = 1;
     pageSize = 20;
     totalUsers = 10;
@@ -149,6 +150,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     // Forms
     searchForm: FormGroup;
     filterForm !: FormGroup;
+    searchProfileForm !: FormGroup;
     searchProtocolForm !: FormGroup;
     searchText: string = '';
 
@@ -157,43 +159,20 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     // Table Columns Configuration
     tableColumns: TableColumn[] = [
-        { title: 'Tests', key: 'tests', sortable: true, class: 'text-left', editable: true, multiSelect: true, allOptionsText: 'All Tests' },
-        { title: 'Cohort', key: 'cohortName', sortable: true, class: 'text-left', editable: true, multiSelect: false },
-        { title: 'Visits', key: 'visits', sortable: true, class: 'text-left', editable: true, multiSelect: true, allOptionsText: 'All Visits' },
-        { title: 'Blind/Hide', key: 'blindOrHide', sortable: true, class: 'text-left', editable: true, multiSelect: false },
-        { title: 'Action', key: 'action', sortable: false, class: 'text-center col-sticky-right noHover', isAction: true }
-    ]
+        { title: "", key: 'checkbox', sortable: false, class: 'text-left nohover', isCheckBox: true, widthColumn: '57px' },
+        { title: "Tests", key: 'testsDisplay', sortable: true, sortField: "Tests", multiSelect: true, allOptionsText: "All Tests", class: 'text-left', widthColumn: 'calc((100% - 557px)/2)', editable: true },
+        { title: "Cohort", key: "cohortName", sortable: true, multiSelect: false, allOptionsText: "All Cohorts", sortField: 'CohortName', class: "text-left", widthColumn: "228px", editable: true },
+        { title: "Visits", key: "visitsDisplay", sortable: true, sortField: "Visits", multiSelect: true, allOptionsText: "All Visits", class: "text-left", widthColumn: "calc((100% - 557px)/2)", editable: true },
+        { title: 'Blind/Hide', key: 'blindOrHide', sortable: true, multiSelect: false, sortField: 'BlindOrHide', class: 'text-left', widthColumn: '200px', editable: true },
+        { title: 'Action', key: 'actionProfile', sortable: false, class: 'text-center nohover', isAction: true, widthColumn: '88px' }
+    ];
 
-    
-
-    editOptions: Record<string, SelectionOption[]> = {
-        testId: [
-            { id: 'All Tests', text: 'All Tests' },
-            { id: 'Test 01', text: 'Test 01' },
-            { id: 'Test 02', text: 'Test 02' },
-            { id: '0101 - Haemoglobin', text: '0101 - Haemoglobin' },
-            { id: '0102 - Haematocrit', text: '0102 - Haematocrit' },
-            { id: 'Admin test 04', text: 'Admin test 04' }
-        ],
-        cohortId: [
-            { id: 'Cohort 1', text: 'Cohort 1' },
-            { id: 'Cohort 2', text: 'Cohort 2' },
-            { id: 'Cohort 5', text: 'Cohort 5' },
-            { id: 'Cohort 6', text: 'Cohort 6' },
-            { id: 'Cohort 8', text: 'Cohort 8' }
-        ],
-        visitId: [
-            { id: 'All Visits', text: 'All Visits' },
-            { id: 'Week 20', text: 'Week 20' },
-            { id: 'Week 21', text: 'Week 21' },
-            { id: 'Week 22', text: 'Week 22' },
-            { id: 'Week 29', text: 'Week 29' }
-        ],
-        blideOrHide: [
-            { id: 'Blind', text: 'Blind' },
-            { id: 'Hide', text: 'Hide' }
-        ]
-    }
+    // Map display column keys to actual data keys for edit mode
+    editKeyMap: Record<string, string> = {
+        'testsDisplay': 'testsValues',
+        'visitsDisplay': 'visitsValues',
+        'cohortName': 'cohortValue'
+    };
 
     dirtyProfiles: Map<number, Profile> = new Map();
 
@@ -203,6 +182,18 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     displayAlertHiddenBlindErrorTimeOut: any = null;
 
     //#endregion
+
+    /**
+     * Dynamic getter for editOptions from testOptions, cohortOptions, visitOptions
+     */
+    get editOptions(): Record<string, SelectionOption[]> {
+        return {
+            testsDisplay: this.testOptions.map(t => ({ id: t.id, text: t.text })),
+            cohortName: this.cohortOptions.map(c => ({ id: c.id, text: c.text })),
+            visitsDisplay: this.visitOptions.map(v => ({ id: v.id, text: v.text })),
+            blindOrHide: this.profileStatusOptions.map(p => ({ id: p.value, text: p.text }))
+        };
+    }
 
     @ViewChild(CdkVirtualScrollViewport) viewport !: CdkVirtualScrollViewport;
     @ViewChild('table', { static: false }) tableComponent !: ReusableTableComponent;
@@ -257,18 +248,18 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     ngAfterViewInit() {
         if (!this.viewport) return;
         this.viewport.elementScrolled()
-        .pipe(
-        debounceTime(300),
-        takeUntil(this.destroy$),
-        )
-        .subscribe( () => {
-        const distanceToBottom = this. viewport.measureScroll0ffset('bottom');
+            .pipe(
+                debounceTime(300),
+                takeUntil(this.destroy$),
+            )
+            .subscribe(() => {
+                const distanceToBottom = this.viewport.measureScroll0ffset('bottom');
 
-        if (!this.isLoadingMoreProfile && distanceToBottom < 100 && this.profiles.length < this.totalProfiles) {
-        this.profilesLazyLoadingParam.page += 1;
-        this.getReportProfilesByProtocol();
-        }
-        });
+                if (!this.isLoadingMoreProfile && distanceToBottom < 100 && this.profiles.length < this.totalProfiles) {
+                    this.profilesLazyLoadingParam.page += 1;
+                    this.getReportProfilesByProtocol();
+                }
+            });
     }
     ngOnDestroy(): void {
         this.displayAlertEditProfileSuccessfull = false;
@@ -285,9 +276,9 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     onInputSearch() {
         const searchFunction = () => {
-        // this. searchValue = this.searchForm.get('searchText') ?. value;
-        this.page = 1;
-        this.getDetailProfile();
+            // this. searchValue = this.searchForm.get('searchText') ?. value;
+            this.page = 1;
+            this.getDetailProfile();
         };
         this.debounceService.debounce(searchFunction, 600)
     }
@@ -298,16 +289,16 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     }
 
     onSelectTest(data: any) {
-    console.log('selected: ', data);
-    this.selectedTestId = data;
+        console.log('selected: ', data);
+        this.selectedTestId = data;
     }
     onSelectCohort(data: any) {
-    console.log('selected: ', data);
-    this.selectedCohortId = data;
+        console.log('selected: ', data);
+        this.selectedCohortId = data;
     }
     onSelectVisit(data: any) {
-    console.log( 'selected: ', data);
-    this.selectedVisitId = data;
+        console.log('selected: ', data);
+        this.selectedVisitId = data;
     }
     //#endregion
 
@@ -324,18 +315,72 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     }
 
     onProfileUpdated(event: EditableRowUpdate): void {
-        //TODO: Call API to update the profile, then show success alert
+        const updatedRow = event.row;
+        const index = event.index;
+
+        // Convert back from display values to original structure
+        this.restoreProfileDataStructure(updatedRow, index);
 
         this.displayAlertEditProfileSuccessfulTimeOut = setTimeout(() => {
-            if(this.displayAlertEditProfileSuccessfull){
+            if (this.displayAlertEditProfileSuccessfull) {
                 this.displayAlertEditProfileSuccessfull = false;
             }
         }, 8000)
+        // TODO: Call API to save the profile update
+    }
+
+    /**
+     * Restore profile data structure from edited values
+     * Converts testsValues back to tests array, visitsValues back to visits array, etc.
+     */
+    private restoreProfileDataStructure(row: any, index: number): void {
+        const rawData = this.profileDataTableRaw.get(index);
+        if (!rawData) return;
+
+        // Restore tests array from testsValues (IDs)
+        if (row.testsValues && Array.isArray(row.testsValues)) {
+            row.tests = row.testsValues.map((valueId: string) => {
+                const [id, version] = valueId.split('@');
+                return {
+                    studyTestId: id,
+                    testName: this.testOptions.find(t => t.id === valueId)?.text || '',
+                    versionNumber: parseInt(version)
+                };
+            });
+            // Update display
+            row.testsDisplay = row.tests.map((t: any) => t.testName).join('; ') || '-';
+        }
+
+        // Restore visits array from visitsValues (IDs)
+        if (row.visitsValues && Array.isArray(row.visitsValues)) {
+            row.visits = row.visitsValues.map((valueId: string) => {
+                const [id, version] = valueId.split('@');
+                return {
+                    visitId: id,
+                    visitName: this.visitOptions.find(v => v.id === valueId)?.text || '',
+                    versionNumber: parseInt(version)
+                };
+            });
+            // Update display
+            row.visitsDisplay = row.visits.map((v: any) => v.visitName).join('; ') || '-';
+        }
+
+        // Restore cohort from cohortValue (ID)
+        if (row.cohortValue) {
+            const [cohortId, version] = String(row.cohortValue).split('@');
+            row.cohortId = cohortId;
+            row.cohortName = this.cohortOptions.find(c => c.id === row.cohortValue)?.text || row.cohortName;
+        }
+
+        // Restore blindOrHide from display format back to code format
+        if (row.blindOrHide) {
+            row.blindOrHide = row.blindOrHide === 'Blind' ? 'B' : (row.blindOrHide === 'Hide' ? 'H' : row.blindOrHide);
+        }
     }
 
     onEditCanceled(): void {
     }
-    
+
     getKeyByIndex(index: number): string {
         return ''
     }
@@ -355,31 +400,31 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     }
 
     onEditProfile(data: any) {
-    console.log('edit profile', data);
+        console.log('edit profile', data);
 
     }
 
     onActionPage(action: number): void {
-    if (action === 1) {
-    this.page++;
-    } else {
-    this.page --;
-    }
-    this.getDetailProfile();
+        if (action === 1) {
+            this.page++;
+        } else {
+            this.page--;
+        }
+        this.getDetailProfile();
     }
 
     updateAllUserSelectedState() {
-    if (this.allUserSelectedState === 'all-checked' || this.allUserSelectedState === 'some-unchecked') {
-    this.allUserSelectedState = this.exceptedUserSelection.size === 0 ? 'all-checked' : 'some-unchecked'
-    } else {
-    this.allUserSelectedState = this.exceptedUserSelection.size === 0 ? 'all-unchecked' : 'some-checked'
-    }
+        if (this.allUserSelectedState === 'all-checked' || this.allUserSelectedState === 'some-unchecked') {
+            this.allUserSelectedState = this.exceptedUserSelection.size === 0 ? 'all-checked' : 'some-unchecked'
+        } else {
+            this.allUserSelectedState = this.exceptedUserSelection.size === 0 ? 'all-unchecked' : 'some-checked'
+        }
     }
     isUserSelected(index: number): boolean {
-    const key = this.getKeyByIndex(index);
-    const iskeyExisted = this.exceptedUserSelection.has(key);
-    return this.allUserSelectedState === 'all-checked' || this.allUserSelectedState === 'some-unchecked' ? !isKeyExisted : isKeyExisted;
-    } 
+        const key = this.getKeyByIndex(index);
+        const isKeyExisted = this.exceptedUserSelection.has(key);
+        return this.allUserSelectedState === 'all-checked' || this.allUserSelectedState === 'some-unchecked' ? !isKeyExisted : isKeyExisted;
+    }
 
     toggleUserSelection(index: number): void {
         const key = this.getKeyByIndex(index);
@@ -433,6 +478,10 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     }
 
     applyFilters() {
+        const filter = this.filterForm.value;
+        this.page = 1;
+        this.getDetailProfile();
+    }
 
     isResetValue(form: any, field: string) {
         return form.get(field)?.value === null || form.get(field)?.value === '';
@@ -455,7 +504,13 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     }
     onProtocolChange(selectedProtocol: SelectionOption): void {
         this.selectedProtocol = { protocolId: selectedProtocol.id, studyCode: selectedProtocol.text };
-        this.getDetailSelectedProtocol();
+        this.selectedProfile = null;
+        this.profiles = [];
+        this.profileOptions = [];
+        this.page = 1;
+        this.getReportProfilesByProtocol();
+        this.resetFilters();
+        this.getFilterDropdownData();
 
     }
 
@@ -468,10 +523,98 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
         this.protocolOptions = [];
         this.getActivatedProtocols();
     }
+
+    onToggleProtocolDropdown(isOpen: boolean): void {
+        if (!isOpen) {
+            this.currentActivatedProtocolQueryParams = {
+                ... this.currentActivatedProtocolQueryParams,
+                page: 1,
+                searchValue: '',
+            }
+            this.getActivatedProtocols();
+        }
+    }
+    //#endregion
+
+    //#region Profile logic
+
+    selectProfile(profile: Profile) {
+        if (this.selectedProfile == profile) { return; }
+        this.selectedProfile = profile;
+        this.page = 1;
+        this.getDetailProfile();
+        this.getFilterDropdownDataByProFile();
+    }
+
+    onToggleProfileCheckbox(profile: Profile): void {
+        if (this.selectedProfileByCheckbox.has(profile)) {
+            this.selectedProfileByCheckbox.delete(profile);
+        } else {
+            this.selectedProfileByCheckbox.add(profile);
+        }
+    }
+
+    isProfileChecked(profile: Profile): boolean {
+        return this.selectedProfileByCheckbox.has(profile);
+    }
+
+    searchProfile(value: string = '') {
+        if (value == null || value == undefined) { return }
+        this.profilesLazyLoadingParam.searchValue = value;
+        this.profiles = [];
+        this.profileOptions = [];
+        this.getReportProfilesByProtocol();
+    }
+    //#endregion
+
+    //#region Add Profile Modal logic
+    onCloseProtocolRequiredModal() {
+        this.showProtocolRequiredModal = false;
+    }
+    onOpenAddProfilePopup() {
+        if (!this.selectedProtocol) {
+            this.showProtocolRequiredModal = true;
+
+        } else {
+            this.showAddProfileModal = true;
+        }
+    }
+
+    onCloseAddProfilePopup() {
+        this.showAddProfileModal = false;
+    }
+    onSaveAddprofilePopup(data: AddProfileModalData) {
+        this.saveReportProfile(data)
+    }
+    showAlert(alertType: AlertType, content: string) {
+        this.displayAlert = {
+            ...this.displayAlert,
+            alertType,
+            title: alertType === 'success' ? 'Success!' : 'Failed!',
+            subtitle: content,
+        }
+    }
+    private alertTimeout: any;
+
+    toggleAlertWithTimeout(
+        alertKey: 'isAlertShown',
+        duration = 8000
+    ): void {
+        if (this.alertTimeout) {
+            clearTimeout(this.alertTimeout);
+        }
+        this[alertKey] = true;
+        this.alertTimeout = setTimeout(() => {
+            this[alertKey] = false;
+        }, duration);
+    }
+    onCloseAlert() {
+        this.isAlertShown = false;
+    }
     //#endregion
 
     //#region Handle API Calls
-    async getActivatedProtocols() {
+    async getActivatedProtocols(shouldResetCurrent: boolean = false) {
         try {
             this.isLoadingProtocols = true;
             this.setSkeletonLoading(true);
@@ -481,7 +624,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
                     debounceTime(300),
                     distinctUntilChanged()
                 ));
-            this.protocols = this.protocols.length > 0 ? [... this.protocols, ...response.items] : response.items ?? [];
+            this.protocols = shouldResetCurrent ? response.items ?? [] : [... this.protocols, ...response.items];
             this.totalProtocols = response.totalCount;
             this.protocolOptions = this.protocols.map(p => ({ id: p.protocolId, text: p.studyCode }));
         }
@@ -492,30 +635,313 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
             this.setSkeletonLoading(false);
         }
     }
-    async getDetailSelectedProtocol() {
+
+    capitalizeFirstletter(str: string): string {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    async getDetailProfile() {
         if (!this.selectedProtocol) return;
         try {
             this.setLoading(true);
             const queryParams = {
-                searchFields: [null],
-                searchValue: null,
-                pageNumber: 1,
-                pageSize: 10
+                studyId: this.selectedProtocol?.protocolId,
+                profileId: this.selectedProfile?.profileId,
+                studyTestIds: this.selectedTestId.length > 0 ? this.selectedTestId.map((x: any) => ({ studyTestId: x.actualId, versionNumber: x.versionNumber })) : null,
+                cohortIds: this.selectedCohortId.length > 0 ? this.selectedCohortId.map((x: any) => ({ cohortId: x.actualId, versionNumber: x.versionNumber })) : null,
+                visitIds: this.selectedVisitId.length > 0 ? this.selectedVisitId.map((x: any) => ({ visitId: x.actualId, versionNumber: x.versionNumber })) : null,
+                blindOrHide: this.filterForm.get('blindOrHide')?.value === 'Blind' ? 'B' : (this.filterForm.get('blindOrHide')?.value === 'Hide' ? 'H' : null),
+                searchFields: [
+                    null
+                ],
+                searchValue: this.searchForm.get('searchText').value || "",
+                sortField: this.capitalizeFirstletter(this.sortField),
+                sortDirection: this.sortType,
+                currentPage: this.page,
+                pageSize: this.pageSize
             }
-            const response = await firstValueFrom(this.adminManagementService.getDetailActivatedProtocol(this.selectedProtocol.protocolId, queryParams));
-            this.selectedProtocol = {
-                ... this.selectedProtocol,
-                studyType: response.protocol.studyType,
-                status: response.protocol.status,
-                sponsor: response.protocol.sponsor,
-                overwriteStatus: response.protocol.overwriteStatus
-            }
+            const response = await firstValueFrom(this.adminManagementService.getDetailProfile(this.selectedProtocol?.protocolId, queryParams));
+            this.profileDataTable = response?.items || [];
+            this.transformProfileDataForTable();
+            // this.associatedUsers response.items;
+            this.totalUsers = response?.totalCount || 0;
+            this.setLoading(false);
         }
         catch (error) {
             this.selectedProtocol = null;
+        }
+        finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Transform profile data from API for table display
+     * Converts nested arrays (tests, visits) to display format and maintains edit values
+     */
+    private transformProfileDataForTable(): void {
+        this.profileDataTableRaw.clear();
+
+        this.profileDataTable = this.profileDataTable.map((item: any, index: number) => {
+            // Store original data for reference
+            this.profileDataTableRaw.set(index, JSON.parse(JSON.stringify(item)));
+
+            // Transform tests array
+            const testsDisplay = item.tests
+                ?.map((t: any) => t.testName)
+                .join('; ') || '-';
+
+            const testsValues = item.tests
+                ?.map((t: any) => `${t.studyTestId}@${t.versionNumber}`)
+                || [];
+
+            // Transform visits array
+            const visitsDisplay = item.visits
+                ?.map((v: any) => v.visitName)
+                .join('; ') || '-';
+
+            const visitsValues = item.visits
+                ?.map((v: any) => `${v.visitId}@${v.versionNumber}`)
+                || [];
+
+            // Format cohort value for editing - find version from cohortOptions
+            let cohortValue = item.cohortId;
+            if (item.cohortId && this.cohortOptions.length > 0) {
+                const cohortOption = this.cohortOptions.find((c: any) => c.actualId === item.cohortId);
+                if (cohortOption) {
+                    cohortValue = cohortOption.id; // This is already in format ${id}@${version}
+                }
+            }
+
+            return {
+                ...item,
+                testsDisplay,
+                testsValues,
+                visitsDisplay,
+                visitsValues,
+                cohortValue,
+                blindOrHide: item.blindOrHide === 'B' ? 'Blind' : (item.blindOrHide === 'H' ? 'Hide' : '-')
+            };
+        });
+    }
+
+    async getFilterDropdownData() {
+        try {
+            this.setLoading(true);
+            const queryParams = {
+                protocolId: this.selectedProtocol?.protocolId
+            }
+            const filterResponse = await firstValueFrom(
+                this.adminManagementService.getDropDownFilterProfile(queryParams)
+            );
+            this.testOptions = filterResponse?.tests?.map((t: any) => ({
+                text: t.testName,
+                actualId: t.studyTestId,
+                id: t.studyTestId + '@' + t.versionNumber,
+                versionNumber: t.versionNumber
+            }));
+            this.cohortOptions = filterResponse?.cohorts.map((c: any) => ({
+                text: c.cohortName,
+                actualId: c.cohortId,
+                id: c.cohortId + '@' + c.versionNumber,
+                versionNumber: c.versionNumber
+            }));
+            this.visitOptions = filterResponse?.visits.map((v: any) => ({
+                text: v.visitName,
+                actualId: v.visitId,
+                id: v.visitId + '@' + v.versionNumber,
+                versionNumber: v.versionNumber
+            }));
+        } catch (error) {
+            console.log(error);
         } finally {
             this.setLoading(false);
         }
     }
-}
+
+    async getFilterDropdownDataByProFile() {
+        try {
+            this.setLoading(true);
+            const queryParams = {
+                profileId: this.selectedProfile?.profileId
+            }
+            const filterResponse = await firstValueFrom(
+                this.adminManagementService.getDropDownFilterTableByProfile(queryParams)
+            );
+            this.testOptions = filterResponse?.tests?.map((t: any) => ({
+                text: t.testName,
+                actualId: t.studyTestId,
+                id: t.studyTestId + '@' + t.versionNumber,
+                versionNumber: t.versionNumber
+            }));
+            this.cohortOptions = filterResponse?.cohorts.map((c: any) => ({
+                text: c.cohortName,
+                actualId: c.cohortId,
+                id: c.cohortId + '@' + c.versionNumber,
+                versionNumber: c.versionNumber
+            }));
+            this.visitOptions = filterResponse?.visits.map((v: any) => ({
+                text: v.visitName,
+                actualId: v.visitId,
+                id: v.visitId + '@' + v.versionNumber,
+                versionNumber: v.versionNumber
+            }));
+            // Keep the ByProfile versions for potential future use
+            this.testOptionsByProfile = this.testOptions;
+            this.cohortOptionsByProfile = this.cohortOptions;
+            this.visitOptionsByProfile = this.visitOptions;
+        } catch (error) {
+            console.log(error);
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    async getReportProfilesByProtocol() {
+        if (!this.selectedProtocol?.protocolId) return;
+        this.profilesLazyLoadingParam.protocolId = this.selectedProtocol.protocolId;
+        try {
+            this.isLoadingMoreProfile = true;
+            const response = await firstValueFrom(this.adminManagementService.getReportProfilesByProtocol(this.profilesLazyLoadingParam))
+            // Append the loading profiles to the current one
+            const loadingProfiles = (response.items ?? []) as Profile[];
+            this.profiles = [...this.profiles, ...loadingProfiles];
+            this.totalProfiles = response.totalCount;
+            // Set profile list options and default profile
+            if (!this.selectedProfile) this.selectedProfile = loadingProfiles.find(p => p.isDefault === true) || null;
+            this.getDetailProfile();
+            this.getFilterDropdownDataByProFile();
+            this.profileOptions = this.profiles.map(p => ({ id: p.profileId, text: p.profileName }))
+        } catch (error: any) {
+            console.log(error)
+        } finally {
+            this.isLoadingMoreProfile = false;
+        }
+    }
+
+    async saveReportProfile(data: AddProfileModalData) {
+        this.isAddingProfile = true;
+        try {
+            const response = await firstValueFrom(this.adminManagementService.addReportProfile({
+                profileName: data.profileName,
+                protocolId: data.protocolId
+            }))
+            if (response?.success) {
+                const content = `${data.profileName} is added to the list Profile for ${this.selectedProtocol?.studyCode} successfully.`
+                this.showAlert('success', content)
+            } else {
+            }
+            this.showAlert('error', 'Please try again.')
+            // reload again the current page
+            this.profiles = []
+            await this.getReportProfilesByProtocol();
+        } catch (error: any) {
+            console.log(error)
+            this.showAlert('error', 'Please try again.')
+        } finally {
+            this.isAddingProfile = false;
+            this.showAddProfileModal = false;
+            this.toggleAlertWithTimeout("isAlertShown");
+        }
+    }
     //#endregion
+
+    onClickAddNewProfile() {
+        this.tableComponent!.addNewProfile = true;
+    }
+    addNewProfileSuccessfully() {
+        this.toggleAlertWithTimeout("isAlertShown");
+        this.showAlert('success', `The Blind/Hide configuration for this ${this.selectedProtocol?.studyCode} has been saved successfully.`)
+    }
+    // Remove profile
+    async onBulkDeleteReportProfiles(status: any) {
+        if (status === 0) {
+            this.removeProfileLoading = !this.removeProfileLoading;
+        } else {
+            this.showRemoveProfileModal = true;
+            try {
+                const selectedProfileIds = new Set<any>();
+                this.selectedProfileByCheckbox.forEach((u: any) => {
+                    selectedProfileIds.add(u.profileId);
+                });
+                const response = await firstValueFrom(this.adminManagementService.bulkDeleteReportProfiles({
+                    profileIds: [...selectedProfileIds]
+                }));
+                if (response?.success) {
+                    const ids = [...this.selectedProfileNames].join(',');
+                    const content = `The ${ids} ${this.selectedProfileNames && this.selectedProfileNames.size > 1 ? 'are' : 'is'} removed from ${this.selectedProtocol?.studyCode} successfully.`
+                    this.showAlert('success', content)
+                } else {
+                    this.showAlert('error', 'Please try again.')
+                }
+                // reload again the current page
+                this.profiles = []
+                this.selectedProfileByCheckbox.clear();
+                await this.getReportProfilesByProtocol();
+            } catch (error: any) {
+                this.showAlert('error', 'Please try again.')
+            } finally {
+                this.removeProfileLoading = false;
+                this.showRemoveProfileModal = false;
+                this.toggleAlertWithTimeout("isAlertShown");
+            }
+        }
+    }
+
+    selectedProfileNames: Set<any> = new Set<any>();
+
+    onRemoveProfile(data: any) {
+        this.selectedProfileNames.clear();
+        this.selectedProfileByCheckbox.forEach((u: any) => {
+            this.selectedProfileNames.add(u.profileName);
+        });
+        this.showRemoveProfileModal = !this.showRemoveProfileModal;
+    }
+    handleDisplayAlertBlindHiddenError() {
+        if (this.displayAlertHiddenBlindErrorTimeOut) clearTimeout(this.displayAlertHiddenBlindErrorTimeOut);
+        this.displayAlertHiddenBlindError = true
+        this.displayAlertHiddenBlindErrorTimeOut = setTimeout(() => {
+            if (this.displayAlertHiddenBlindError) {
+                this.displayAlertHiddenBlindError = false;
+            }
+        }, 8000)
+    }
+
+    // Remove Blind/Hide
+    async onRemoveBlindHideAPI(status: any) {
+        if (status == 0) {
+            this.showRemoveBlindHideModal = !this.showRemoveBlindHideModal;
+        } else {
+            this.removeRemoveBlindHideLoading = true;
+            try {
+                const payload = {
+                    profileSettingIds: this.selectedReportUserIds,
+                    isDeleteAll: this.selectedAllReportUser
+                }
+                const response = await firstValueFrom(this.adminManagementService.deleteReportProfileSettings(payload))
+                if (response?.success) {
+                    const content = `The Blind/Hide Configuration is removed from the Profile successfully.`
+                    this.showAlert('success', content)
+                } else {
+                    this.showAlert('error', 'Please try again.')
+                }
+                // reload again the current page
+                this.profileDataTable = [];
+                await this.getDetailProfile();
+            } catch (error: any) {
+                console.log(error)
+                this.showAlert('error', 'Please try again.');
+            } finally {
+                this.removeRemoveBlindHideLoading = false;
+                this.showRemoveBlindHideModal = false;
+                this.toggleAlertWithTimeout("isAlertShown");
+            }
+        }
+    }
+
+    onRemoveBlindHide() {
+        this.showRemoveBlindHideModal = !this.showRemoveBlindHideModal;
+    }
+}
+//#endregion

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, forwardRef, HostListener, Input, OnInit, Output, ElementRef, ViewChild, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
+import { Component, EventEmitter, forwardRef, HostListener, Input, OnInit, Output, ElementRef, ViewChild, OnChanges, NgZone SimpleChanges, OnDestroy, ChangeDetectorRef, FormBuilder, } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
@@ -23,62 +23,171 @@ export interface SelectionOption {
 export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit, OnChanges, OnDestroy {
     @Input() label: string = 'Protocol';
     @Input() isRequired: boolean = true;
+    @Input() isStorageBlindServie = false;
     @Input() placeholder: string = 'Protocol';
+    @Input() allOptionsText: string = 'All Protocols';
+    @Input() itemSizePx: number = 40;
     @Input() skeletonCount: number = 5;
     @Input() options: SelectionOption[] = [];
     @Input() multiSelect: boolean = true; // true = multi-select (default), false = single-select
     @Input() displayAsText: boolean = false; // true = show as semicolon-separated text, false = show as chips
     @Input() isVirtualScroll: boolean = false;
     @Input() itemSize: number = 40;
+    @Input() searchValue: string = '';
+    @Input() totalItems: number = 0;
+    @Input() totalInitItems: number = 0;
+    @Input() disabled: boolean = false;
+    @Input() checkPosition: 'left' | 'right' = 'left';
+    @Input() showBorder: boolean = true;
+    @Input() isMinusCheckBox: boolean = false;
+    @Input() zIndex: number = 1000;
+    @Input() showMoreChip: boolean = true;
+    @Input() totalCount: number = 0;
+    @Input() value: any = null;
+    @Input() displayOnlyEmpty: boolean = false;
+    @Input() initSelections: any[] = [];
     @Input() loadMoreThreshold: number = 10;
     @Input() isLoading: boolean = false;
-    @Input() allOptionsText: string = 'All Protocols';
     @Input() maxItems: number = 12000; // Maximum items to load
+
     @Output() optionsChange = new EventEmitter<SelectionOption[]>();
+    @Output() onAllOptionChange = new EventEmitter<boolean>();
     @Output() selectionChange = new EventEmitter<SelectionOption>(); // For single select mode
     @Output() loadMore = new EventEmitter<void>();
     @Output() searchQuery = new EventEmitter<string>();
     @Output() onToggleDropdown = new EventEmitter<boolean>();
-    @ViewChild('dropdownWrapper', { static: false }) dropdownWrapper !: ElementRef<HTMLDivElement>;
-    @ViewChild('dropdownMenu', { static: false }) dropdownMenu !: ElementRef<HTMLDivElement>;
-    @ViewChild(CdkVirtualScrollViewport, { static: false }) virtualScrollViewport !: CdkVirtualScrollViewport;
+    @Output() dropdownClosed = new EventEmitter<void>();
+    @ViewChild('dropdownWrapper', { static: false }) dropdownWrapper!: ElementRef<HTMLDivElement>;
+    @ViewChild('dropdownMenu', { static: false }) dropdownMenu!: ElementRef<HTMLDivElement>;
+    @ViewChild('inputWrapperRef', { static: false }) inputWrapperRef!: ElementRef<HTMLDivElement>;
+    @ViewChild('measureContainer', { static: false }) measureContainer!: ElementRef<HTMLDivElement>;
+    @ViewChild(CdkVirtualScrollViewport, { static: false }) virtualScrollViewport!: CdkVirtualScrollViewport;
+
+    constructor(private elementRef: ElementRef, private ngZone: NgZone, private cdr: ChangeDetectorRef, private fb: FormBuilder, private debounceService: DebounceService) { }
 
     showDropdown: boolean = false;
-    searchText: string = '';
-    selectedOptions: SelectionOption[] = [];
-    tempSelectedOptions: SelectionOption[] = [];
+    searchControl = this.fb.control("");
+    searchText: string = "";
+    // searchControl this.fb.control("");
+    @Input() selectedOptions: SelectionOption[];
+    @Input() isEditUser = false;
+    @Input() tempSelectedOptions: SelectionOption[] = [];
     filteredOptions: SelectionOption[] = [];
     allOptionsSelected: boolean = false;
-    showMore: boolean = true;
-
+    tempAllOptionsSelected: boolean = false;
+    showMore: boolean = false;
+    private initialValue: any = null; // Track initial value before options load
+    // True only when no initial data exists (e.g., no study type selected)
+    get hasNoOptions(): boolean {
+        return this.totalItems === 0 && this.options.length === 0 && this.isLoading;
+    }
+    // True when search has no results but initial data exists
+    get hasNoSearchResults(): boolean {
+        return this.options.length === 0 && !this.isLoading;
+    }
     private isLoadingMore: boolean = false;
     private scrollCheckInterval: any = null;
     private onChange: (value: string[]) => void = () => { };
     private onTouched: () => void = () => { };
+    // Dynamic chip width calculation
+    calculatedMaxChips: number = Infinity;
+    private resizeObserver: ResizeObserver | null = null;
+    private recalcScheduled: boolean = false;
 
-    constructor(private elementRef: ElementRef) { }
     ngOnInit(): void {
+        // Store initial value for later reference
+        this.initialValue = this.value;
+        // Handle default value="All" before data loads
+        if (this.value === 'All') {
+            this.allOptionsSelected = true;
+            this.tempAllOptionsSelected = true;
+        }
         this.updateFilteredOptions();
+        // this.searchControl.valueChanges.pipe(
+        // skip(1),
+        // debounceTime (300),
+        // distinctUntilChanged(),
+        // ).subscribe(value => {
+        // if (value == null || value == undefined) return;
+        // this.onSearchChange (value);
+        // });
+    }
+    ngAfterViewInit(): void {
+        // Observe container resize to recalculate visible chips
+        if (this.showMoreChip && this.inputWrapperRef?.nativeElement) {
+            this.ngZone.runOutsideAngular(() => {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this.scheduleChipRecalculation();
+                });
+                this.resizeObserver.observe(this.inputWrapperRef.nativeElement);
+            });
+        }
     }
 
     ngOnChanges(changes: SimpleChanges): void {
+        if (changes.initSelections.currentValue) {
+            this.writeValue(changes.initSelections.currentValue);
+        }
         if (changes['options']) {
             const previousOptions = changes['options'].previousValue || [];
             const currentOptions = changes['options'].currentValue || [];
+            if (changes['totalItems']?.currentValue !== changes['totalItems']?.previousValue) {
+                this.tempAllOptionsSelected = false;
+                this.allOptionsSelected = false;
+            }
+
+            // If Initial value is 'All' and this is the first data load, select all options
+            if (this.initialValue === 'All' && previousOptions.length && currentOptions.length > 0 && this.totalInitItems === this.totalItems) {
+                this.selectedOptions = [...currentOptions];
+                this.tempSelectedOptions = [...currentOptions];
+                this.allOptionsSelected = true;
+                this.tempAllOptionsSelected = true;
+                this.emitChange();
+            } // If initial value is array of IDs, restore selection from those IDs
+            else if (Array.isArray(this.initialValue) && this.initialValue.length > 0 && previousOptions.length == 0 && currentOptions.length > 0) {
+                this.selectedOptions = currentOptions.filter((opt: SelectionOption) => this.initialValue.includes(opt.id));
+                this.tempSelectedOptions = [...this.selectedOptions];
+                this.emitChange();
+            }
+            // If initial value is single ID string, restore that selection
+            else if (typeof this.initialValue === 'string' && this.initialValue !== 'All' && this.initialValue.length > 0 && previousOptions.length == 0 && currentOptions.length > 0) {
+                const option = currentOptions.find((opt: SelectionOption) => opt.id === this.initialValue);
+                if (option) {
+                    this.selectedOptions = [option];
+                    this.tempSelectedOptions = [option];
+                    this.emitChange();
+                }
+            }
 
             // Auto-select new items if "All Options" is selected
-            if (this.allOptionsSelected && currentOptions.length > previousOptions.length) {
+            else if (this.tempAllOptionsSelected && currentOptions.length > previousOptions.length) {
                 const newItems = currentOptions.filter((curr: SelectionOption) =>
                     !previousOptions.some((prev: SelectionOption) => prev.id === curr.id)
                 );
-
-                newItems.forEach((item: SelectionOption) => {
-                    if (!this.tempSelectedOptions.some(p => p.id === item.id)) {
-                        this.tempSelectedOptions = [... this.tempSelectedOptions, item];
-                    }
-                });
+                if (this.totalInitItems === this.totalItems) {
+                    newItems.forEach((item: SelectionOption) => {
+                        if (!this.tempSelectedOptions.some(p => p.id === item.id)) {
+                            this.tempSelectedOptions = [...this.tempSelectedOptions, item];
+                        }
+                        if (!this.selectedOptions.some(p => p.id === item.id)) {
+                            this.selectedOptions = [...this.selectedOptions, item];
+                        }
+                    });
+                }
+            } else {
+                if (this.totalInitItems === this.totalItems && this.tempAllOptionsSelected) {
+                    const newItems = currentOptions.filter((curr: SelectionOption) =>
+                        !previousOptions.some((prev: SelectionOption) => prev.id === curr.id)
+                    );
+                    newItems.forEach((item: SelectionOption) => {
+                        if (!this.tempSelectedOptions.some(p => p.id === item.id)) {
+                            this.tempSelectedOptions = [...this.tempSelectedOptions, item];
+                        }
+                    });
+                }
             }
             this.updateFilteredOptions();
+            this.scheduleChipRecalculation();
 
             // Check if all items loaded - stop interval to free resources
             if (currentOptions.length >= this.maxItems) {
@@ -88,21 +197,90 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
                 setTimeout(() => this.checkScrollPosition(), 100);
             }
         }
+        // for edit user
+        if (changes.selectedOptions && this.isEditUser) {
+            if (this.selectedOptions) {
+                this.selectedOptions.forEach((item: SelectionOption) => {
+                    this.toggleOption(item);
+                })
+                this.onApply();
+            }
+        }
     }
+
     ngOnDestroy(): void {
         this.stopScrollCheckInterval();
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
     }
 
 
-    writeValue(value: string[]): void {
-        if (value && value.length > 0) {
-            this.selectedOptions = this.options.filter(p => value.includes(p.id));
-            this.tempSelectedOptions
-                = [... this.selectedOptions];
-        } else {
+    writeValue(value: string[] | string | null): void {
+        // Store initial value
+        if (this.isEditUser) {
+            this.writeValueEdit(value);
+            return;
+        }
+        this.initialValue = value;
+        // Handle special case where value is 'All'
+        if (value === 'All') {
+            this.allOptionsSelected = true;
+            this.tempAllOptionsSelected = true;
+            // When data loads, select all options
+            if (this.options.length > 0) {
+                this.selectedOptions = [...this.options];
+                this.tempSelectedOptions = [...this.options];
+            } else {
+                this.selectedOptions = [];
+                this.tempSelectedOptions = [];
+            }
+        }
+        // Handle empty/null value no selection
+        else if (!value || (Array.isArray(value) && value.length === 0)) {
             this.selectedOptions = [];
             this.tempSelectedOptions = [];
+            this.allOptionsSelected = false;
+            this.tempAllOptionsSelected = false;
         }
+
+        // Handle single ID string single selection
+        else if (typeof value === 'string' && value !== 'All') {
+            const option = this.options.find(p => p.id === value);
+            if (option) {
+                this.selectedOptions = [option];
+                this.tempSelectedOptions = [option];
+            } else {
+                this.selectedOptions = this.isEditUser ? this.selectedOptions : [];
+                this.tempSelectedOptions = [];
+            }
+            this.allOptionsSelected = false;
+            this.tempAllOptionsSelected = false;
+        }
+        // Handle array of IDs multiple selection
+        else if (Array.isArray(value) && value.length > 0) {
+            this.selectedOptions = this.options.filter(p => value.includes(p.id));
+            this.tempSelectedOptions = [...this.selectedOptions];
+            this.allOptionsSelected = false;
+            this.tempAllOptionsSelected = false;
+        }
+        this.updateFilteredOptions();
+        this.updateConfirmedAllOptionsState(); // Update allOptionsSelected state
+        this.scheduleChipRecalculation();
+    }
+
+    writeValueEdit(value: any): void {
+        if (value && value.length > 0) {
+            this.selectedOptions = this.options.filter(p => value.includes(p.id));
+            this.tempSelectedOptions = [...this.selectedOptions];
+        }
+        else {
+            this.selectedOptions = this.isEditUser ? this.selectedOptions : [];
+            this.tempSelectedOptions = [];
+        }
+        this.updateFilteredOptions();
+        this.updateConfirmedAllOptionsState(); // Update allOptionsSelected state after setting values
     }
 
     registerOnChange(fn: (value: string[]) => void): void {
@@ -112,14 +290,18 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
         this.onTouched = fn;
     }
     toggleDropdown(event: Event): void {
+        if (this.disabled) {
+            return; // Don't open dropdown if disabled
+        }
         this.showDropdown = !this.showDropdown;
         if (this.showDropdown) {
             this.onToggleDropdown.emit(true);
-            this.tempSelectedOptions = [... this.selectedOptions];
-            this.searchText = '';
+            this.tempSelectedOptions = [...this.selectedOptions];
+            // this.searchControl.setValue(this.searchValue || ", ( emitEvent: false });
+            if (!this.isStorageBlindServie) this.searchText = this.searchValue || '';
+            this.tempAllOptionsSelected = this.allOptionsSelected;
             this.updateFilteredOptions();
             setTimeout(() => this.scrollIntoViewIfNeeded(), 0);
-
             // Start interval only if not all items loaded
             if (this.options.length < this.maxItems) {
                 this.startScrollCheckInterval();
@@ -127,7 +309,13 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
         } else {
             this.onToggleDropdown.emit(false);
             this.stopScrollCheckInterval();
+            this.dropdownClosed.emit();
+            this.onTouched();
         }
+    }
+
+    get isIndeterminate(): boolean {
+        return this.tempSelectedOptions.length > 0 && this.tempSelectedOptions.length < this.filteredOptions.length;
     }
 
     private startScrollCheckInterval(): void {
@@ -145,7 +333,10 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
 
     onSearchChange(): void {
         if (this.isVirtualScroll) {
-            this.searchQuery.emit(this.searchText);
+            const onSearch = () => {
+                this.searchQuery.emit(this.searchText);
+            }
+            this.debounceService.debounce(onSearch, 600);
         } else {
             this.updateFilteredOptions();
         }
@@ -207,14 +398,34 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
             this.tempSelectedOptions.some(p => p.id === fp.id)
         )
     }
+
+    updateConfirmedAllOptionsState(): void {
+        // For components with totalItems (pagination), check against totalItems
+        if (this.totalItems > 0) {
+            this.allOptionsSelected = this.selectedOptions.length === this.totalItems;
+            return;
+        }
+        // For components without totalItems (static options), check against all options
+        if (this.options.length === 0) {
+            this.allOptionsSelected = false;
+            return;
+        }
+        this.allOptionsSelected = this.options.every(option =>
+            this.selectedOptions.some(selected => selected.id === option.id)
+        );
+    }
+
     removeOption(option: SelectionOption, event: Event): void {
         event.stopPropagation();
 
-        // If removing "All Protocols" chip, deselect all
-        if (option.id === 'all' && this.allOptionsSelected) {
+        // If removing "All" chip, deselect all and reset initial value
+        if ((option.id === 'all' || this.allOptionsSelected) && this.totalInitItems === this.totalItems) {
             this.selectedOptions = [];
             this.tempSelectedOptions = [];
             this.allOptionsSelected = false;
+            this.tempAllOptionsSelected = false;
+            this.initialValue = null; // Reset so visibleChips won't show "All" chip
+            this.value = null; // Reset input value
             this.emitChange();
             return;
         }
@@ -231,13 +442,20 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
     }
 
     onApply(): void {
-        this.selectedOptions = [... this.tempSelectedOptions];
+        this.selectedOptions = [...this.tempSelectedOptions];
+        this.allOptionsSelected = this.tempAllOptionsSelected;
+        // Reset initialValue and value when not all options are selected (to prevent "All" chip from persisting)
+        if (!this.tempAllOptionsSelected) {
+            this.initialValue = null;
+            this.value = null;
+        }
         this.emitChange();
         this.closeDropdown();
     }
 
     onCancel(): void {
         this.tempSelectedOptions = [... this.selectedOptions];
+        this.tempAllOptionsSelected = this.allOptionsSelected;
         this.closeDropdown();
 
     }
@@ -247,16 +465,24 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
         this.searchText = '';
         this.updateFilteredOptions();
         this.stopScrollCheckInterval();
+        this.dropdownClosed.emit();
+        this.onTouched();
 
     }
 
     get visibleChips(): SelectionOption[] {
-        // If all options are selected, show only "All Protocols" chip
-        if (this.allOptionsSelected && this.selectedOptions.length > 0) {
+        // Show "All" chip if initialValue="All' or value='All' (even before data loads)
+        if (this.initialValue === 'All' || this.value === 'All' && this.totalInitItems === this.totalItems) {
             return [{ id: 'all', text: this.allOptionsText, selected: true }];
         }
+        // Show "All" chip when allOptionsSelected is true (user clicked All checkbox and Apply)
+        if (this.allOptionsSelected && this.selectedOptions.length > 0 && this.totalInitItems === this.totalItems) {
+            return [{ id: 'all', text: this.allOptionsText, selected: true }];
+        }
+        if (this.showMoreChip && this.selectedOptions.length > this.calculatedMaxChips) {
+            return this.selectedOptions.slice(0, this.calculatedMaxChips);
+        }
         return this.selectedOptions;
-
     }
 
     get hasMoreChips(): boolean {
@@ -265,6 +491,14 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
             return false;
         }
         return this.selectedOptions.length > 3;
+
+    }
+
+    get hiddenChipsCount(): number {
+        if (!this.hasMoreChips) {
+            return 0;
+        }
+        return this.selectedOptions.length - this.calculatedMaxChips;
 
     }
 
@@ -292,10 +526,81 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
         event.stopPropagation();
         this.showMore = !this.showMore;
     }
+
     private emitChange(): void {
         const value = this.selectedOptions.map(p => p.id);
         this.onChange(value);
         this.optionsChange.emit(this.selectedOptions);
+        if (this.multiSelect) {
+            if (
+                (
+                    this.initialValue === 'All' ||
+                    this.value === 'All' ||
+                    this.allOptionsSelected
+                ) &&
+                this.selectedOptions.length > 0 &&
+                this.totalInitItems === this.totalItems
+            ) {
+                this.onAllOptionChange.emit(true);
+            } else {
+                this.onAllOptionChange.emit(false);
+            }
+        }
+        this.scheduleChipRecalculation();
+    }
+
+    /** Schedule a recalculation of how many chips fit in the container */
+    scheduleChipRecalculation(): void {
+        if (!this.showMoreChip || this.recalcScheduled) return;
+        this.recalcScheduled = true;
+        // Wait for DOM to render all chips before measuring
+        setTimeout(() => {
+            this.recalcScheduled = false;
+            this.measureAndCalculateMaxChips();
+        }, 0);
+    }
+    /** Measure chips in hidden container and calculate how many fit in the visible area */
+    private measureAndCalculateMaxChips(): void {
+        if (!this.showMoreChip) return;
+        const wrapperEl = this.inputWrapperRef?.nativeElement;
+        const measureEl = this.measureContainer?.nativeElement;
+        if (!wrapperEl || !measureEl) return;
+        // If showing "All" chip or no selections, no need to calculate
+        if (this.allOptionsSelected || this.initialValue === 'All' || this.value === 'All' || this.selectedOptions.length === 0) {
+            this.calculatedMaxChips = Infinity;
+            return;
+        }
+        const wrapperwidth = wrapperEl.clientWidth;
+        // Get the actions area width ("N. more" text + dropdown icon)
+        const actionsEl = wrapperEl.querySelector('.input-actions');
+        const actionsWidth = actionsEl ? (actionsEl as HTMLElement).offsetWidth : 50;
+        // Container padding (left 16px + right 16px) + gap between chips area and actions (8px)
+        const containerPadding = 40;
+        const availableWidth = wrapperwidth - actionsWidth - containerPadding;
+        // Measure each chip from the hidden measurement container
+        const chipEls = measureEl.querySelectorAll('.measure-chip');
+        if (chipEls.length === 0) {
+            this.calculatedMaxChips = Infinity;
+            return;
+        }
+        let usedWidth = 0;
+        let fitCount = 0;
+        const chipGap = 4; // gap between chips
+        for (let i = 0; i < chipEls.length; i++) {
+            const chipWidth = (chipEls[i] as HTMLElement).offsetWidth;
+            const totalChipWidth = chipWidth + (i > 0 ? chipGap : 0);
+            if (usedWidth + totalChipWidth <= availableWidth) {
+                usedWidth += totalChipWidth;
+                fitCount++;
+            } else {
+                break;
+            }
+        }
+        const newMax = Math.max(1, fitCount);
+        if (newMax !== this.calculatedMaxChips) {
+            this.calculatedMaxChips = newMax;
+            this.cdr.detectChanges();
+        }
     }
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent): void {

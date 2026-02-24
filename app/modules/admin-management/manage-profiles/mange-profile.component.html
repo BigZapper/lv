@@ -1,159 +1,198 @@
 <!-- Desktop View -->
 <div *ngIf="isDesktop">
     <div class="page-header">
-        <h1 class="page-title">Profile Management ({{ !!selectedProtocol ? totalProfiles : null }})</h1>
+        <h1 class="page-title">Profile Management ({{ !!selectedProtocol ? totalProfiles: null }})</h1>
         <div class="header-actions">
             <div class="action-buttons">
-                <form [formGroup]="searchForm">
-                    <div>
-                        <app-autocomplete formControlName="searchText" [isRequired]="false"
-                            label="Search Test/Cohort/Visit" type="text" placeHolder="Search"
-                            [model]="searchForm ?. value ?. searchText" className="w-100"
-                            [isResetValue]="isResetValue(searchForm, 'searchText')" id="searchAssociatedUsers"
-                            [notPaddingX]="true"></app-autocomplete>
-                    </div>
-                </form>
-                <div class="divider-vertical"></div>
-                <app-button text="Add Profile" background="#128474" width="auto" height="44px" />
+                <app-button *ngIf="selectedProfileByCheckbox.size > 0" text="Remove Profile" [background]="#128474"
+                    [width]=" auto" [outlined]="true" [height]="44px" (onClick)="onRemoveProfile($event)">
+                </app-button>
+                <app-button text="Add Profile" background="#128474" width="auto" height="44px"
+                    (onClick)="onOpenAddProfilePopup()" />
             </div>
         </div>
-    </div>
-    <div class="manage-protocols-desktop">
-        <!-- Protocol List Sidebar -->
-        <div class="protocol-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">Select a protocol to view and manage its associated profiles</span>
-                <span>
-                    <form [formGroup]="searchProtocolForm">
-                        <app-multi-selection formControlName="searchProtocol" label="Select Protocol"
-                            [isRequired]="true" placeholder="Select Protocol" [options]="protocolOptions"
-                            [isVirtualScroll]="true" [multiSelect]="false" [itemSize]="40" [loadMoreThreshold]="40"
-                            [isLoading]="isLoadingProtocols" [skeletonCount]="10"
-                            (selectionChange)="onProtocolChange($event)" (loadMore)="onLoadMoreProtocols()"
-                            (searchQuery)="onProtocolSearch($event)" />
-                    </form>
-                </span>
-            </div>
-
-            <div class="profile-list">
-                <cdk-virtual-scroll-viewport #viewport itemSize="40" minBufferPx="750" maxBufferPx="750"
-                    class="profile-list example-viewport" [style.height]="'100%'" buffer>
-                    <div *cdkVirtualFor="let protocol of protocols" class="profile-item"
-                        [ngClass]="{ 'selected': selectedProtocol ?. protocolId === protocol.protocolId }">
-                        <span class="profile-name">{{ protocol.studyCode }}</span>
+        <div class="manage-protocols-desktop">
+            <!-- Protocol List Sidebar -->
+            <div class="protocol-sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">Select a protocol to view and manage its associated profiles</span>
+                    <div class="sidebar-search">
+                        <form [formGroup]="searchProtocolForm">
+                            <app-multi-selection-v2 formControlName="searchProtocol" label="Select Protocol"
+                                [isRequired]="true" placeholder="Select Protocol" [options]="protocolOptions"
+                                [isVirtualScroll]="true" [multiSelect]="false" [itemSize]="40" [loadMoreThreshold]="40"
+                                [isLoading]="isLoadingProtocols" [skeletonCount]="10" [totalCount]="totalProtocols"
+                                (selectionChange)="onProtocolChange($event)" (loadMore)="onLoadMoreProtocols ()"
+                                (searchQuery)="onProtocolSearch($event)"
+                                (onToggleDropdown)="onToggleProtocolSearchDropdown ($event)" />
+                        </form>
+                        <form *ngIf="!! selected Protocol" [formGroup]="searchProfileForm">
+                            <app-autocomplete formControlName="searchProfile" [isRequired]="false"
+                                label="Search Profile" type="text" placeholder="Search Profile"
+                                [model]="searchProfileForm?.value?.searchProfile" className="w-100" id="searchProfile"
+                                [notPaddingX]="true" [isResetValue]="isResetValue(searchProfileForm, 'searchProfile')">
+                            </app-autocomplete>
+                        </form>
+                        <form *ngIf="!!selectedProtocol" [formGroup]="searchProfileForm">
+                            <app-autocomplete formControlName="searchProfile" [isRequired]="false"
+                                label="Search Profile" type="text" placeholder="Search Profile"
+                                [model]="searchProfileForm?.value?.searchProfile" className="w-100" id="searchProfile"
+                                [notPaddingX]="true" [isResetValue]="isResetValue(searchProfileForm, 'searchProfile')">
+                            </app-autocomplete>
+                        </form>
                     </div>
-                    <app-scroll-text-skeleton *ngIf="isLoading"></app-scroll-text-skeleton>
+                </div>
+                <cdk-virtual-scroll-viewport #viewport itemSize="40" minBufferPx="750" maxBufferPx="750"
+                    class="profile-list" [style.height]="'100%'" buffer>
+                    <div *cdkVirtualFor="let profile of profiles; let i = index" class="profile-item"
+                        [ngClass]="{ 'selected': selectedProfile?.profileId === profile.profileId }"
+                        (click)="selectProfile(profile)">
+                        <app-checkbox-v2 [IsDisable]="profile.isDefault" [Id]="'checkboxProfile'+i"
+                            (check)="onToggleProfileCheckbox(profile)" [model]="isProfileChecked(profile)" />
+                        <span class="profile-name">{{ profile.profileName }}</span>
+                    </div>
+                    <app-scroll-text-skeleton *ngIf="isLoadingMoreProfile"></app-scroll-text-skeleton>
                 </cdk-virtual-scroll-viewport>
             </div>
-        </div>
 
-        <!-- Main Content Area -->
-        <div class="main-content">
+            <!-- Main Content Area -->
+            <div class="main-content">
 
-            <!-- Page Header with Title and Actions -->
-            <div *ngIf="!!selectedProtocol" class="content-wrapper">
-                <!-- Protocol Header Section -->
-                <div class="protocol-header-section">
-                    <h2 class="protocol-title">{{ selectedProfile | | 'Default Profile' }}</h2>
-                    <div class="protocol-meta-row">
-                        <div class="protocol-meta">
-                            <div class="meta-item">
-                                <span class="label">Protocol ID: </span>
-                                <span class="value">{{ selectedProtocol ? selectedProtocol.studyCode : '-'}}</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="label">Sponsor : </span>
-                                <span class="value">{{ selectedProtocol ? selectedProtocol.sponsor : ' --- ' }}</span>
-                            </div>
-                            <div class="divider-vertical-small"></div>
-                            <div class="meta-item">
-                                <span class="label">Status : </span>
-                                <span class="status-badge" [ngClass]="{
+                <!-- Page Header with Title and Actions -->
+                <div *ngIf="!!selectedProtocol" class="content-wrapper">
+                    <!-- Protocol Header Section -->
+                    <div class="protocol-header-section">
+                        <h2 class="protocol-title">{{ selectedProfile || 'Default Profile' }}</h2>
+                        <div class="protocol-meta-row">
+                            <div class="protocol-meta">
+                                <div class="meta-item">
+                                    <span class="label">Protocol ID: </span>
+                                    <span class="value">{{ selectedProtocol ? selectedProtocol.studyCode : '-'}}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="label">Sponsor : </span>
+                                    <span class="value">{{ selectedProtocol ? selectedProtocol.sponsor : ' --- '
+                                        }}</span>
+                                </div>
+                                <div class="divider-vertical-small"></div>
+                                <div class="meta-item">
+                                    <span class="label">Status : </span>
+                                    <span class="status-badge" [ngClass]="{
                                     active': selectedProtocol.status === 'ACTIVE',
                                     'closed': selectedProtocol.status === 'CLOSED',
                                     'open': selectedProtocol.status === 'OPEN',
                                     }">
-                                    {{ selectedProtocol.status }}
-                                </span>
+                                        {{ selectedProtocol.status }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Tabs Section -->
-                <div class="tabs-section" [ngClass]="{'tabs-section-mobile': !isDesktop}">
-                    <div class="tabs-container" [ngClass]="{'tabs-scroll': !isDesktop}">
-                        <div *ngFor="let tab of tabs" class="tab-item" [class.active]="tab.value === selectedTab"
-                            (click)="onSelectTab(tab.value)">
-                            {{ tab.label }}
+                    <!-- Tabs Section -->
+                    <div class="tabs-section" [ngClass]="{'tabs-section-mobile': !isDesktop}">
+                        <div class="tabs-container" [ngClass]="{'tabs-scroll': !isDesktop}">
+                            <div *ngFor="let tab of tabs" class="tab-item" [class.active]="tab.value === selectedTab"
+                                (click)="onSelectTab(tab.value)">
+                                {{ tab.label }}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Content Section -->
-                <div class="content-section">
-                    <!-- Filter Section -->
-                    <div class="filter-section">
-                        <form [formGroup]="filterForm">
-                            <div class="filters-row">
-                                <div class="filter-fields">
-                                    <div class="filter-field">
-                                        <app-selectbox formControlName="testId" [isRequired]="false" label="Tests"
-                                            type="text" placeHolder="Tests" className="w-100" id="filterTest"
-                                            [data]="[]" classWrapperName="p-0" [isFull]="true">
-                                        </app-selectbox>
-                                    </div>
-                                    <div class="filter-field">
-                                        <app-selectbox formControlName="cohortId" [isRequired]="false" label="Cohort"
-                                            type="text" placeHolder="Cohort" className="w-100" id="filterCohort"
-                                            [data]="[]" classWrapperName="p-0" [isFull]="true">
-                                        </app-selectbox>
-                                    </div>
-                                    <div class="filter-field">
-                                        <app-selectbox formControlName="visitId" [isRequired]="false" label="Visits"
-                                            type="text" placeHolder="Visits" className="w-100" id="filterVisit"
-                                            [data]="[]" classWrapperName="p-0" [isFull]="true">
-                                        </app-selectbox>
-                                    </div>
-                                    <div class="filter-field">
-                                        <app-selectbox formControlName="blideOrHide" [isRequired]="false"
-                                            label="Blide/Hide" type="text" placeHolder="Blide/Hide" className="w-100"
-                                            id="filterBlideOrHide" [data]="[]" classWrapperName="p-0" [isFull]="true">
-                                        </app-selectbox>
-                                    </div>
+                    <!-- Blide or Hide Profile Settings Content -->
+                    <div *ngIf="selectedTab === 'blindOrHideProfileSettings'" class="content-section">
+                        <!-- Search Section -->
+                        <div class="search-section">
+                            <form [formGroup]="searchForm">
+                                <div>
+                                    <app-autocomplete formControlName="searchText" [isRequired]="false"
+                                        label="Search Test/Cohort/Visit" type="text"
+                                        placeHolder="Search Test/Cohort/Visit" [model]="searchForm?.value?.searchText"
+                                        className="w-100" id="searchText" [notPaddingX]="true"
+                                        [isResetValue]="isResetValue(searchForm, 'searchText')"
+                                        (onInput)="onInputSearch()" [checkOnPrepend]="false">
+                                    </app-autocomplete>
                                 </div>
-                                <div class="filter-buttons">
-                                    <app-button id="idBtnApplyFilter" text="Apply Filters" background="#128474"
-                                        width="auto" height="44px" />
-                                    <app-button id="idBtnClearFilter" text="Clear Filters" background="#128474"
-                                        width="100%" height="44px" [outlined]="true" className="previous-btn" />
-                                    <div class="divider-vertical"></div>
-                                    <app-button text="Add" background="#128474" width="auto" height="44px" />
-                                </div>
+                            </form>
+                            <div class="divider vertical"></div>
+                            <app-button *ngIf="selectedReportUserIds && selectedReportUserIds.length > 0" text="Remove"
+                                [background]="#128474" [width]="auto" [outlined]="true" [height]="'44px'"
+                                (onClick)="onRemoveBlindHide($event)">
+                            </app-button>
+                            <app-button text="Add" background="#128474" width="auto" height="44px"
+                                (onClick)="onClickAddNewProfile()" />
+                        </div>
+
+                        <!-- Content Section -->
+                        <div class="content-section">
+                            <!-- Filter Section -->
+                            <div class="filter-section">
+                                <form [formGroup]="filterForm">
+                                    <div class="filters-row">
+                                        <div class="filter-fields">
+                                            <div class="filter-field">
+                                                <app-selectbox formControlName="testId" [isRequired]="false"
+                                                    label="Tests" type="text" placeHolder="Tests" className="w-100"
+                                                    id="filterTest" [data]="[]" classWrapperName="p-0" [isFull]="true">
+                                                </app-selectbox>
+                                            </div>
+                                            <div class="filter-field">
+                                                <app-selectbox formControlName="cohortId" [isRequired]="false"
+                                                    label="Cohort" type="text" placeHolder="Cohort" className="w-100"
+                                                    id="filterCohort" [data]="[]" classWrapperName="p-0"
+                                                    [isFull]="true">
+                                                </app-selectbox>
+                                            </div>
+                                            <div class="filter-field">
+                                                <app-selectbox formControlName="visitId" [isRequired]="false"
+                                                    label="Visits" type="text" placeHolder="Visits" className="w-100"
+                                                    id="filterVisit" [data]="[]" classWrapperName="p-0" [isFull]="true">
+                                                </app-selectbox>
+                                            </div>
+                                            <div class="filter-field">
+                                                <app-selectbox formControlName="blideOrHide" [isRequired]="false"
+                                                    label="Blide/Hide" type="text" placeHolder="Blide/Hide"
+                                                    className="w-100" id="filterBlideOrHide" [data]="[]"
+                                                    classWrapperName="p-0" [isFull]="true">
+                                                </app-selectbox>
+                                            </div>
+                                        </div>
+                                        <div class="filter-buttons">
+                                            <app-button id="idBtnApplyFilter" text="Apply Filters" background="#128474"
+                                                width="auto" height="44px" />
+                                            <app-button id="idBtnClearFilter" text="Clear Filters" background="#128474"
+                                                width="100%" height="44px" [outlined]="true" className="previous-btn" />
+                                            <div class="divider-vertical"></div>
+                                            <app-button text="Add" background="#128474" width="auto" height="44px" />
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
-                    </div>
-                    <!-- Users Table -->
-                    <div class="table-wrapper">
-                        <app-reusable-table [columns]="tableColumns" [data]="associatedProfiles" dataKey="testId"
-                            [showSortIcon]="true" [defaultSortColumn]="'testId'" [defaultSortDirection]="'asc'"
-                            (sortChange)="onTableSort($event)" [isScrollY]="true" [isNoBorder]="true"
-                            [isTableReportAdmin]="true" [enableEdit]="true" [editOptions]="editOptions"
-                            (rowUpdated)="onProfileUpdated($event)" (editCanceled)="onEditCanceled()">
-                        </app-reusable-table>
-                    </div>
-                    <div *ngIf="successMessage" class="success-message">
-                        {{ successMessage }}
+                            <!-- Users Table -->
+                            <div class="table-wrapper">
+                                <app-reusable-table #table [columns]="tableColumns" [data]="profileDataTable"
+                                    [showSortIcon]="true" [defaultSortColumn]="'tests'" [defaultSortDirection]="asc"
+                                    (sortChange)="onTableSort($event)" (clickEditProfile)="onEditProfile ($event)"
+                                    [isScrollY]="true" [isNoBorder]="true" [isTableReportAdmin]="true"
+                                    (selectedItem)="onSelectedItems ($event)"
+                                    (selectedItemAll)="onSelectedItemAll($event)"
+                                    (checkboxChange)="onTableCheckboxChange ($event)" [testOptions]="testOptions"
+                                    [cohortOptions]="cohortOptions" [profileStatusOptions]="profileStatusOptions"
+                                    (addNewProfileSuccessfully)="addNewProfileSuccessfully()"
+                                    [visitOptions]="visitOptions" [tableLayout]="'fixed'" [enableEdit]="true"
+                                    [editOptions]="editOptions" [editKeyMap]="editKeyMap"
+                                    (rowUpdated)="onProfileUpdated ($event)" (editCanceled)="onEditCanceled()">
+                                </app-reusable-table>
+                            </div>
+
+                            <!-- Pagination-->
+                            <ng-container *ngTemplateOutlet="pagination"></ng-container>
+                        </div>
                     </div>
 
-                    <!-- Pagination-->
-                    <ng-container *ngTemplateOutlet="pagination"></ng-container>
+                    <div *ngIf="!selectedProtocol" class="no-selection">
+                        <p>Select a protocol to view details</p>
+                    </div>
                 </div>
-            </div>
-
-            <div *ngIf="!selectedProtocol" class="no-selection">
-                <p>Select a protocol to view details</p>
             </div>
         </div>
-    </div>
-</div>

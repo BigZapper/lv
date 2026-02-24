@@ -58,28 +58,46 @@ export class ReusableTableComponent implements OnInit {
     @Input() dataKey?: string; // Assume that this key is exist in data
     @Input() showSortIcon = true;
     @Input() defaultSortColumn?: string;
+    @Input() sortField?: any = '';
     @Input() defaultSortDirection: 'asc' | 'desc' = 'asc';
     @Input() emptyMessage = EmptyMessage;
     @Output() sortChange = new EventEmitter<SortEvent>();
-    @Input() isScrollY = false;
+    @Input() isScrolly = false;
     @Input() isNoBorder = false;
     @Input() isTableReportAdmin = false;
+    @Input() tableLayout = 'auto';
+    @Output() editUserEvent = new EventEmitter<any>();
+    @Output() manageReportPermissionsEvent = new EventEmitter<any>();
     @Output() clickTestLink = new EventEmitter<string>();
     @Output() checkboxChange = new EventEmitter<CheckboxEvent>();
-    
+    @Output() clickEditProfile = new EventEmitter<any>();
+    @Output() addNewProfileSuccessfully = new EventEmitter<any>();
+    @Input() allCheckboxState: AllCheckboxState = 'all-unchecked';
+    @Input() profileStatusOptions: any[] = [];
+    @Input() testOptions: any[] = [];
+    @Input() cohortOptions: any[] = [];
+    @Input() visitOptions: any[] = [];
+    @Input() totalData: number = 0; // Add total data to ensure checkbox state is correct with all-checked state
+    @Input() currentSort: { [key: string]: 'asc' | 'desc' | 'none' } = {};
+    isCheckedAllbox = false;
     // Edit mode inputs
     @Input() enableEdit = false;
     @Input() editOptions: EditOptionsMap = {};
+    @Input() editKeyMap: Record<string, string> = {}; // Map display keys to actual edit value keys (e.g., 'testsDisplay' -> 'testsValues')
     @Output() rowUpdated = new EventEmitter<EditableRowUpdate>();
     @Output() editCanceled = new EventEmitter<number>();
 
-    currentSort: { [key: string]: 'asc' | 'desc' | 'none' } = ({});
-    allCheckboxState: AllCheckboxState = 'all-unchecked';
     exceptionCheckboxByIndex = new Set<number>();
     exceptionCheckboxByKey = new Set<string>();
+    addNewProfile = false;
+    selectedTestId = [];
+    selectedCohortId = [];
+    selectedVisitId = [];
 
     editRowIndex: number | null = null;
     editRowValues: Record<string, string[]> = {};
+    @Output() selectedItem = new EventEmitter<any>();
+    @Output() selectedItemAll = new EventEmitter<any>();
 
     @ViewChild('tBody') tBody !: ElementRef;
     userActions = [
@@ -103,6 +121,12 @@ export class ReusableTableComponent implements OnInit {
                 direction: this.defaultSortDirection
             });
         }
+        if (this.currentSort) {
+            this.sortChange.emit({
+                column: this.sortField,
+                direction: this.currentSort[this.sortField] || ''
+            });
+        }
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -112,7 +136,14 @@ export class ReusableTableComponent implements OnInit {
                 tbodyElement.style.height = `auto`;
             }
         }
+        if (changes.allCheckboxState) {
+            const allCheckboxState = changes.allCheckboxState.currentValue as AllCheckboxState;
+            if (allCheckboxState === 'all-checked' || allCheckboxState === 'all-unchecked') {
+                this.clearAllBoxes();
+            }
+        }
     }
+
     get isCheckedAllBox(): boolean {
         return this.allCheckboxState === 'all-checked';
     }
@@ -180,7 +211,7 @@ export class ReusableTableComponent implements OnInit {
         })
     }
 
-    onClickCheckBox(index: number) {
+    onClickCheckBox(row: any, index: number, checked: any) {
         this.toggleSingleCheckbox(index);
         this.checkboxChange.emit({
             changeType: 'single',
@@ -192,7 +223,20 @@ export class ReusableTableComponent implements OnInit {
             exceptionKeyList: !!this.dataKey ? Array.from(this.exceptionCheckboxByKey) : undefined,
 
         })
+
+        const id = row?.profileSettingId;
+        if (!id) return;
+
+        const idStr = String(id);
+        if (checked) {
+            this.selectedReportUserIds.add(idStr);
+        } else {
+            this.selectedReportUserIds.delete(idStr);
+        }
+        const selectedReportUserIds = Array.from(this.selectedReportUserIds);
+        this.selectedItem.emit(selectedReportUserIds);
     }
+
     navigateToTestDetails(data: any) {
         this.clickTestLink.emit(data);
     }
@@ -226,9 +270,40 @@ export class ReusableTableComponent implements OnInit {
         }
         this.sortChange.emit({ column: column.sortField || column.key, direction: newDirection });
     }
+
+    TD_WIDTH = 150; // Default width for td, can be customized based on column
+
+    getTooltipRow(aliases: string[]) {
+        let visible: string[] = [];
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d')!;
+        for (let i = 0; i < aliases.length; i++) {
+            visible.push(aliases[i]);
+            const remaining = aliases.length - i - 1;
+            const testText = visible.join(', ') + (remaining > 0 ? ` +${remaining} more` : '');
+            const textWidth = context.measureText(testText).width;
+            if (textWidth > this.TD_WIDTH) {
+                visible.pop();
+                break;
+            }
+        }
+        const hiddenCount = aliases.length - visible.length;
+        return {
+            display:
+                hiddenCount > 0
+                    ? `${visible.join(', ')}, +${hiddenCount} more`
+                    : visible.join(', '),
+            isTooltip: hiddenCount > 0,
+            fullContent: this.mapArrToString(aliases)
+        }
+    }
+
     getCellValue(row: any, columnKey: string): any {
-        if (this.isTooltipColumn(row, columnKey)) {
-            return this.formatAliasDisplay(row[columnKey]) || '-';
+        if (this.isTooltipColKey(row, columnKey)) {
+            if (this.getTooltipRow(row[columnKey])?.isTooltip) {
+                return this.getTooltipRow(row[columnKey]) || '-';
+            }
+            return this.mapArrToString(row[columnKey])
         }
         if (this.isTableReportAdmin && this.isArrayDataColumn(columnKey)) {
             return row[columnKey].map((s: any) => s.siteNumber || s.regionName || s.countryName).join(', ') || '-';
@@ -239,54 +314,19 @@ export class ReusableTableComponent implements OnInit {
             return row[columnKey]?.roleName || '-';
         }
 
+        if (this.isTableReportAdmin && columnKey === 'blindOrHide') {
+            return row[columnKey] === 'B' ? 'Blind' : 'Hide';
+        }
+
         if (Array.isArray(row[columnKey])) {
             if (row[columnKey].length === 0) return '-';
-            
-            // Handle array of objects (tests, visits)
-            if (typeof row[columnKey][0] === 'object') {
-                if (columnKey === 'tests') {
-                    const testNames = row[columnKey].map((test: any) => test.testName);
-                    // Check if all tests are selected
-                    const column = this.columns.find(col => col.key === columnKey);
-                    if (column && column.allOptionsText && this.editOptions[columnKey]) {
-                        const availableOptions = this.editOptions[columnKey] || [];
-                        if (testNames.length === availableOptions.length) {
-                            const allSelected = availableOptions.every(opt => 
-                                testNames.includes(opt.text)
-                            );
-                            if (allSelected) {
-                                return column.allOptionsText;
-                            }
-                        }
-                    }
-                    return testNames.join('; ');
-                } else if (columnKey === 'visits') {
-                    const visitNames = row[columnKey].map((visit: any) => visit.visitName);
-                    // Check if all visits are selected
-                    const column = this.columns.find(col => col.key === columnKey);
-                    if (column && column.allOptionsText && this.editOptions[columnKey]) {
-                        const availableOptions = this.editOptions[columnKey] || [];
-                        if (visitNames.length === availableOptions.length) {
-                            const allSelected = availableOptions.every(opt => 
-                                visitNames.includes(opt.text)
-                            );
-                            if (allSelected) {
-                                return column.allOptionsText;
-                            }
-                        }
-                    }
-                    return visitNames.join('; ');
-                }
-                // For other object arrays, try to get 'name' or 'text' property
-                return row[columnKey].map((item: any) => item.name || item.text || item).join('; ');
-            }
-            
-            // Check if all options are selected for this column (simple arrays)
+            // Check if all options are selected for this column
             const column = this.columns.find(col => col.key === columnKey);
             if (column && column.allOptionsText && this.editOptions[columnKey]) {
                 const availableOptions = this.editOptions[columnKey] || [];
-                const actualOptions = availableOptions.filter(opt => !opt.text.startsWith('All '));
-                
+                // Filter out the "All..." option itself from the count
+                const actualOptions = availableOptions.filter(opt => !opt.text.startsWith('All'));
+                // If all actual options are selected, show "All ..." text
                 if (actualOptions.length > 0 && row[columnKey].length === actualOptions.length) {
                     const allSelected = actualOptions.every(opt => row[columnKey].includes(opt.id));
                     if (allSelected) {
@@ -294,15 +334,16 @@ export class ReusableTableComponent implements OnInit {
                     }
                 }
             }
-            
             return row[columnKey].join('; ');
         }
 
         return row[columnKey] || '-';
     }
-    getCellFullContect(row: any, columnKey: string): any {
-        return row[columnKey] || '-';
+    mapArrColumn(arr: any): any {
+        if (!arr) return '-';
+        return Array.isArray(arr) ? arr.join(', ') : arr;
     }
+
     isLinkColumn(columnKey: string): boolean {
         // Columns that should render as links
         return ['testName', 'testCode'].includes(columnKey);
@@ -311,14 +352,14 @@ export class ReusableTableComponent implements OnInit {
         return columnKey === 'status';
     }
 
-    isTooltipColumn(row: any, columnKey: string): boolean {
+    isTooltipColKey(row: any, columnKey: string): boolean {
         // Columns that should render as links;
         if (row[columnKey] && row[columnKey].length > 1)
             return ['testAlias'].includes(columnKey);
         return false;
     }
     isArrayDataColumn(columnKey: string): boolean {
-        return ['sites', 'regions', 'countries'].includes(columnKey);
+        return ['sites', 'regions', 'countries', 'tests', 'visits'].includes(columnKey);
     }
     formatAliasDisplay(aliases: string[]): string {
         if (!aliases || aliases.length === 0) {
@@ -330,10 +371,26 @@ export class ReusableTableComponent implements OnInit {
         return `${aliases[0]}, +${aliases.length - 1} more`;
     }
     isSorted(columnKey: string): boolean {
-        return this.currentSort[columnKey] && this.currentSort[columnKey] !== 'none';
+        return (this.currentSort[columnKey] && this.currentSort[columnKey] !== 'none') || (this.sortField && columnKey?.toLocaleLowerCase() === this.sortField?.toLocaleLowerCase());
+    }
+    onClickEdit(data: any) {
+        this.clickEditProfile.emit(data);
     }
     onItemClick(event: any, data: any) {
-        console.log('click event: ', event, ', data: ', data);
+        if (event.actionId === 'editUserDetails') {
+            const normalizedData = this.normalizeEmptyToDash(data);
+            this.editUserEvent.emit(normalizedData);
+        } else if (event.actionId === 'manageReportPermissions') {
+            this.manageReportPermissionsEvent.emit(data);
+        }
+    }
+    normalizeEmptyToDash(obj: any): any {
+        const result: any = {};
+        Object.keys(obj).forEach(key => {
+            const value = obj[key];
+            result[key] = value === '' || value === null || value === undefined ? '-' : value;
+        });
+        return result;
     }
     setTbodyHeight(count: number) {
         if (this.tBody) {
@@ -354,6 +411,7 @@ export class ReusableTableComponent implements OnInit {
         }
     }
 
+    minHeight = '';
     onDropdownAction(event: any, index: any) {
         const liCount = document.querySelectorAll('#myList li').length;
         const total = liCount ? liCount : 0;
@@ -361,9 +419,11 @@ export class ReusableTableComponent implements OnInit {
 
         if (event === 'hidden') {
             this.setTbodyHeight(-height);
+            this.minHeight = '0px';
         } else {
             if (index >= this.data?.length - 2) {
                 this.scrollToTop('user-action' + index);
+                this.minHeight = '199px';
                 this.setTbodyHeight(height);
             }
         }
@@ -373,31 +433,15 @@ export class ReusableTableComponent implements OnInit {
     startEdit(row: any, index: number): void {
         this.editRowIndex = index;
         this.editRowValues = {};
-        
+
         // Initialize edit values for all editable columns
         this.columns.forEach(column => {
             if (column.editable && !column.isAction && !column.isCheckBox) {
-                const value = row?.[column.key];
-                
-                // Handle array of objects (like tests, visits)
-                if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-                    // Extract IDs from array of objects
-                    if (column.key === 'tests') {
-                        this.editRowValues[column.key] = value.map(item => item.studyTestId);
-                    } else if (column.key === 'visits') {
-                        this.editRowValues[column.key] = value.map(item => item.visitId);
-                    } else {
-                        this.editRowValues[column.key] = value.map(item => item.id || item);
-                    }
-                } else if (Array.isArray(value)) {
-                    // Handle simple array
-                    this.editRowValues[column.key] = [...value];
-                } else if (value) {
-                    // Handle single value
-                    this.editRowValues[column.key] = [value];
-                } else {
-                    this.editRowValues[column.key] = [];
-                }
+                // Use editKeyMap to get the actual value key if mapped
+                const valueKey = this.editKeyMap[column.key] || column.key;
+                const value = row?.[valueKey];
+                // If value is already an array, use it; otherwise wrap in array
+                this.editRowValues[column.key] = Array.isArray(value) ? [...value] : (value ? [value] : []);
             }
         });
     }
@@ -410,55 +454,21 @@ export class ReusableTableComponent implements OnInit {
 
     saveEdit(row: any, index: number): void {
         const updatedRow = { ...row };
-        
         // Update all editable columns with new values
         this.columns.forEach(column => {
             if (column.editable && !column.isAction && !column.isCheckBox) {
                 const selectedValues = this.editRowValues[column.key] || [];
-                
+                // Use editKeyMap to get the actual value key if mapped
+                const valueKey = this.editKeyMap[column.key] || column.key;
+
                 if (selectedValues.length > 0) {
-                    if (column.multiSelect !== false) {
-                        // For array of objects columns (tests, visits), reconstruct the objects
-                        if (column.key === 'tests') {
-                            const allTests = this.editOptions[column.key] || [];
-                            updatedRow[column.key] = selectedValues.map(id => {
-                                const testOption = allTests.find(opt => opt.id === id);
-                                return {
-                                    studyTestId: id,
-                                    testName: testOption?.text || '',
-                                    versionNumber: 1 // Default version
-                                };
-                            });
-                        } else if (column.key === 'visits') {
-                            const allVisits = this.editOptions[column.key] || [];
-                            updatedRow[column.key] = selectedValues.map(id => {
-                                const visitOption = allVisits.find(opt => opt.id === id);
-                                return {
-                                    visitId: id,
-                                    visitName: visitOption?.text || '',
-                                    versionNumber: 1 // Default version
-                                };
-                            });
-                        } else {
-                            // For simple arrays
-                            updatedRow[column.key] = [...selectedValues];
-                        }
-                    } else {
-                        // Single select - take first value
-                        updatedRow[column.key] = selectedValues[0];
-                    }
+                    // Keep as array if multiSelect, otherwise take first value
+                    updatedRow[valueKey] = column.multiSelect !== false ? [...selectedValues] : selectedValues[0];
                 }
             }
         });
-
         this.data[index] = updatedRow;
         this.rowUpdated.emit({ index, row: updatedRow });
-
-        this.editRowIndex = null;
-        this.editRowValues = {};
-    }
-        this.rowUpdated.emit({ index, row: updatedRow });
-
         this.editRowIndex = null;
         this.editRowValues = {};
     }
@@ -480,12 +490,30 @@ export class ReusableTableComponent implements OnInit {
         const column = this.columns.find(col => col.key === key);
         return column?.title || '';
     }
-
-    private getFirstValue(key: string, fallback: string): string {
-        const value = this.editRowValues[key];
-        if (!value || value.length === 0) {
-            return fallback ?? '-';
-        }
-        return value[0];
+    onClickCancleAddNewProfile() {
+        this.addNewProfile = false;
+    }
+    onClickAddNewProfile() {
+        this.addNewProfile = false;
+        this.addNewProfileSuccessfully.emit()
+    }
+    onSelectTest(data: any) {
+        console.log('selected: ', data);
+        this.selectedTestId = data;
+    }
+    onSelectCohort(data: any) {
+        console.log('selected: ', data);
+        this.selectedCohortId = data;
+    }
+    onSelectVisit(data: any) {
+        console.log('selected: ', data);
+        this.selectedVisitId = data;
+    }
+    onTestsChange(selectedTests: any[]): void {
+        // Track selected Test IDs to preserve selection when data reloads
+        console.log('Selected Tests:', selectedTests);
+    }
+    onLoadMoreTests(): void {
+        console.log('test');
     }
 }

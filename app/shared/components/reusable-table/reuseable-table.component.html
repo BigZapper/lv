@@ -1,61 +1,88 @@
-<div class="table-wrapper" [class. scrollY]="isScrollY">
-    <table>
+<div class="table-wrapper" [class.scrolly]="isScrolly" [style.minHeight]="isScrolly? minHeight">
+    <table [style.tableLayout]="tableLayout">
         <thead>
             <tr>
-
-                <th *ngFor="let column of columns" [class]="column.class || 'text-left'"
-                    [class.sorted]="isSorted(column.key)" (click)="onHeaderClick(column)"
-                    [style.whiteSpace]="isScrollY ? 'nowrap' : ''"
-                    [style.cursor]="column. sortable !== false && showSortIcon ? 'pointer' : 'default'">
+                <th *ngFor="let column of columns" [class]="column.class || 'text-left""
+[style.width]=" column.widthColumn || [class.sorted]="isSorted (column.key)" (click)="onHeaderClick(column)"
+                    [class.noWrapCol]="isScrolly"
+                    [style.cursor]="column.sortable !== false && showSortIcon? 'pointer': 'default'">
                     <div class="d-flex align-items-center">
-                        <div *ngIf="!column. isCheckBox" class="pr-1">{{ column.title }}</div>
-                        app-checkbox-v2
-                        *ngIf="column.isCheckBox"
-                        id="headerUserCheckbox"
-                        (check)="onClickCheckBoxA11()"
-                        [model]="isCheckedAl1Box">
+                        <div *ngIf="!column.isCheckBox" class="pr-1">{{ column.title }}</div>
+                        <app-checkbox-v2 *ngIf="column.isCheckBox" id="headerUserCheckbox"
+                            (check)="onClickCheckBoxAll($event)" paddingLeft="28px" [paddingLeft]="5px"
+                            [model]="isCheckedAllBox">
                         </app-checkbox-v2>
-                        <img *ngIf="showSortIcon && column.sortable !== false" [src]="currentSort[column.key] === 'asc' ? '/assets/image/icon/asc.svg' :
-currentSort[column.key] === 'desc' ? '/assets/image/icon/des.svg' :
-'/assets/image/icon/sort.svg'" alt="sort" />
-
+                        <ing *ngIf="showSortIcon && column.sortable !== false" [src]="currentSort[column.key] === 'asc'? '/assets/image/icon/asc.svg':
+currentSort[column.key] === 'desc'? '/assets/image/icon/des.svg':
+'/assets/image/icon/sort.svg'" [alt]="currentSort[column.key] === 'asc'? 'asc':
+currentSort[column.key] === 'desc'? 'desc':
+'sort'" />
                     </div>
                 </th>
             </tr>
         </thead>
-        <tbody *ngIf="(!data || data.length === 0) && !isTableReportAdmin; else elseBlock" class="text-left bg-white"
+        <tbody *ngIf="(!data || data.length == 0) && !isTableReportAdmin; else elseBlock" class="text-left bg-white"
             style="padding: 14px 12px;">
-
-            <td [style.whiteSpace]="isScrollY ? 'nowrap' : ''">
-                <span id="emptyDataId">{{ emptyMessage }}</span>
-            </td>
+            <tr>
+                <td [class.noWrapCol]="isScrolly">
+                    <span id="emptyDataId">{{ emptyMessage }}</span>
+                </td>
             </tr>
         </tbody>
         <ng-template #elseBlock>
             <tbody>
-                <tr *ngFor="let row of data; let i = index" [class.noBorder]="isNoBorder" [class.row-editing]="enableEdit && isEditing(i)">
+                <tr [class.noBorder]="isNoBorder" style="background-color:#E8F5E9; height: 77px;" *ngIf="addNewProfile">
+                    <td class="text-left" [style.width]="57px"><app-checkbox-v2 [id]="'CheckboxAdd'"
+                            [paddingLeft]="5px">
+                        </app-checkbox-v2></td>
+                    <td class="text-left padding-add-profile" [style.width]="calc((100% 557px)/2)">
+                        <app-multi-selection [label]="'Tests'" [isRequired]="false" [zIndex]="2" [checkPosition]="right"
+                            [isMinusCheckBox]="true" [showBorder]="true" [placeholder]="'Tests'" [options]="testOptions"
+                            [alloptionsText]="'All Tests'" (optionsChange)="onSelectTest($event)" [showMoreChip]="true">
+                        </app-multi-selection>
+                    </td>
+                    <td class="text-left padding-add-profile" [style.width]="20px"> <app-multi-selection
+                            [label]="'Cohorts'" [isRequired]="false" [checkPosition]="right" [isMinusCheckBox]="true"
+                            [showBorder]="true" [placeholder]="'Cohorts'" [zIndex]="2" [options]="cohortOptions"
+                            [alloptionsText]="'All Cohorts'" (optionsChange)="onSelectCohort($event)"
+                            [showMoreChip]="true">
+                        </app-multi-selection></td>
+                    <td class="text-left padding-add-profile" [style.width]="calc((100% 557px)/2)"><app-multi-selection
+                            [label]="'Visits'" [isRequired]="false" [checkPosition]="right" [isMinusCheckBox]="true"
+                            [showBorder]="true" [placeholder]="'Visits'" [zIndex]="2" [options]="visitOptions"
+                            [alloptionsText]="'All Visits'" (optionsChange)="onSelectVisit($event)"
+                            [showMoreChip]="true">
+                        </app-multi-selection></td>
+                    <td class="text-left padding-add-profile" [style.width]="200px"><app-selectbox [isRequired]="false"
+                            label="Blind/Hide" type="text" placeHolder="Blind/Hide" className="w-100"
+                            id="addBlindOrHide" [data]="profileStatusOptions" [width]="200px !important"
+                            classWrapperName="p-0" [isFull]="true" [isHighLight]="true" [zIndex]="2">
+                        </app-selectbox></td>
+                    <td class="padding-add-profile text-center" [style.width]="80px">
+                        <img [src]="/assets/image/icon/sort-checked.svg" alt="ok"
+                            style="cursor: pointer; margin-right: 10px;" (click)="onClickAddNewProfile()" />
+                        <img [src]="/assets/image/icon/cancel-red.svg" alt="cancle" style="cursor: pointer;"
+                            (click)="onClickCancleAddNewProfile()" />
+                    </td>
+                </tr>
+                <tr *ngFor="let row of data; let i = index" [class.noBorder]="isNoBorder"
+                    [class.row-editing]="enableEdit && isEditing(i)">
                     <td *ngFor="let column of columns" [class]="column.class || 'text-left'"
                         [style.whiteSpace]="isScrollY ? 'nowrap' : ' '">
                         <!-- Action column with edit buttons -->
                         <ng-container *ngIf="column.isAction && enableEdit">
                             <button *ngIf="!isEditing(i)" class="icon-button" type="button" aria-label="Edit"
                                 (click)="startEdit(row, i)">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L21 5.75z" />
-                                </svg>
+                                <img src="/assets/image/icon/edit-table.svg" alt="edit">
                             </button>
                             <div *ngIf="isEditing(i)" class="action-group">
                                 <button class="icon-button success" type="button" aria-label="Save"
-                                    (click)="saveEdit(row, i)">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M9 16.2l-3.5-3.5L4 14.2 9 19l12-12-1.5-1.5z" />
-                                    </svg>
+                                    (click)="saveEdit (row, i)">
+                                    <img src="/assets/image/icon/sort-checked.svg" alt="">
                                 </button>
                                 <button class="icon-button danger" type="button" aria-label="Cancel"
                                     (click)="cancelEdit(i)">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.4l-6.3 6.3-1.41-1.41L9.17 12l-6.3-6.29L4.3 4.3l6.29 6.3 6.3-6.3z" />
-                                    </svg>
+                                    <img src="/assets/image/icon/cancel-red.svg" alt="">
                                 </button>
                             </div>
                         </ng-container>
@@ -68,28 +95,29 @@ currentSort[column.key] === 'desc' ? '/assets/image/icon/des.svg' :
 
                         <!-- Edit mode fields -->
                         <ng-container *ngIf="!column.isCheckBox && !column.isAction">
-                            <ng-container *ngIf="enableEdit && isEditing(i) && isEditableColumn(column.key); else displayCell">
-                                <app-multi-selection
-                                    [options]="getOptions(column.key)"
-                                    [multiSelect]="column.multiSelect !== false"
-                                    [isRequired]="false"
+                            <ng-container
+                                *ngIf="enableEdit && isEditing(i) && isEditableColumn(column.key); else displayCell">
+                                <app-multi-selection [options]="getOptions(column.key)"
+                                    [multiSelect]="column.multiSelect !== false" [isRequired]="false"
                                     [label]="getEditLabel(column.key)"
                                     [allOptionsText]="column.allOptionsText || 'All Items'"
-                                    [ngModelOptions]="{ standalone: true }"
-                                    [(ngModel)]="editRowValues[column.key]">
+                                    [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]">
                                 </app-multi-selection>
                             </ng-container>
                             <ng-template #displayCell>
                                 <a *ngIf="isLinkColumn(column.key)" class="link-primary"
-                                    (click)="navigateToTestDetails(row)">
+                                    (click)="navigateToTestDetails (row)">
                                     {{ getCellValue(row, column.key) }}
                                 </a>
                                 <span *ngIf="!isLinkColumn(column.key)">
-                                    <span *ngIf="!isTooltipColumn(row, column.key); else tooltipCell">{{ getCellValue(row, column.key)
+                                    <span [class]="column.classData || *ngIf=" !isTooltipColKey (row, column.key); else
+                                        tooltipCell"> {{
+                                        getCellValue(row, column.key)
                                         }}</span>
                                     <ng-template #tooltipCell>
-                                        <span style="cursor: pointer;" [tooltipClass]="'table-tooltip'" placement="bottom"
-                                            [ngbTooltip]="getCellFullContect(row, column.key)">{{ getCellValue(row, column.key)
+                                        <span style="cursor: pointer;" [tooltipClass]="'table-tooltip'"
+                                            placement="bottom" [ngbTooltip]="getCellValue(row, column.key)"> {{
+                                            getCellValue(row, column.key)
                                             }}</span>
                                     </ng-template>
                                 </span>
@@ -97,8 +125,8 @@ currentSort[column.key] === 'desc' ? '/assets/image/icon/des.svg' :
                         </ng-container>
 
                         <!-- Checkbox column -->
-                        <app-checkbox-v2 *ngIf="column.isCheckBox" [id]="'Checkbox'+i" (check)="onClickCheckBox(i)"
-                            [model]="isCheckedBox(i)">
+                        <app-checkbox-v2 *ngIf="column.isCheckBox" [id]="'Checkbox'+i" paddingLeft="28px"
+                            [paddingLeft]="'5px" (check)="onClickCheckBox(row, i, $event)" [model]="isCheckedBox(i)">
                         </app-checkbox-v2>
                     </td>
                 </tr>
