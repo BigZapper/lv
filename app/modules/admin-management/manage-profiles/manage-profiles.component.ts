@@ -183,16 +183,37 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     //#endregion
 
+    // Cache for editOptions to prevent recreating on every change detection cycle
+    private _editOptionsCache: Record<string, SelectionOption[]> | null = null;
+    private _editOptionsCacheHash: string = '';
+
     /**
      * Dynamic getter for editOptions from testOptions, cohortOptions, visitOptions
+     * Uses caching to prevent unnecessary array recreations that trigger change detection
      */
     get editOptions(): Record<string, SelectionOption[]> {
-        return {
-            testsDisplay: this.testOptions.map(t => ({ id: t.id, text: t.text })),
-            cohortName: this.cohortOptions.map(c => ({ id: c.id, text: c.text })),
-            visitsDisplay: this.visitOptions.map(v => ({ id: v.id, text: v.text })),
-            blindOrHide: this.profileStatusOptions.map(p => ({ id: p.value, text: p.text }))
-        };
+        const currentHash = this.getEditOptionsHash();
+        if (this._editOptionsCache === null || this._editOptionsCacheHash !== currentHash) {
+            this._editOptionsCacheHash = currentHash;
+            this._editOptionsCache = {
+                testsDisplay: this.testOptions.map(t => ({ id: t.id, text: t.text })),
+                cohortName: this.cohortOptions.map(c => ({ id: c.id, text: c.text })),
+                visitsDisplay: this.visitOptions.map(v => ({ id: v.id, text: v.text })),
+                blindOrHide: this.profileStatusOptions.map(p => ({ id: p.value, text: p.text }))
+            };
+        }
+        return this._editOptionsCache;
+    }
+
+    /**
+     * Generate hash of source data to detect if editOptions need rebuilding
+     */
+    private getEditOptionsHash(): string {
+        const testIds = this.testOptions.map(t => t.id).join(',');
+        const cohortIds = this.cohortOptions.map(c => c.id).join(',');
+        const visitIds = this.visitOptions.map(v => v.id).join(',');
+        const statusValues = this.profileStatusOptions.map(p => p.value).join(',');
+        return `${testIds}|${cohortIds}|${visitIds}|${statusValues}`;
     }
 
     @ViewChild(CdkVirtualScrollViewport) viewport !: CdkVirtualScrollViewport;
