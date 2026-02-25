@@ -318,23 +318,29 @@ export class ReusableTableComponent implements OnInit {
             return row[columnKey] === 'B' ? 'Blind' : 'Hide';
         }
 
-        if (Array.isArray(row[columnKey])) {
-            if (row[columnKey].length === 0) return '-';
-            // Check if all options are selected for this column
-            const column = this.columns.find(col => col.key === columnKey);
-            if (column && column.allOptionsText && this.editOptions[columnKey]) {
-                const availableOptions = this.editOptions[columnKey] || [];
-                // Filter out the "All..." option itself from the count
-                const actualOptions = availableOptions.filter(opt => !opt.text.startsWith('All'));
-                // If all actual options are selected, show "All ..." text
-                if (actualOptions.length > 0 && row[columnKey].length === actualOptions.length) {
-                    const allSelected = actualOptions.every(opt => row[columnKey].includes(opt.id));
+        const column = this.columns.find(col => col.key === columnKey);
+        const valueKey = this.editKeyMap[columnKey] || columnKey;
+        const rawValue = row?.[valueKey];
+        const displayValue = row?.[columnKey];
+
+        if (rawValue === 'All' && column?.allOptionsText) {
+            return column.allOptionsText;
+        }
+
+        if (Array.isArray(displayValue)) {
+            if (displayValue.length === 0) return '-';
+            // Check if all options are selected for this column (by IDs)
+            if (column?.allOptionsText && this.editOptions[valueKey]) {
+                const availableOptions = this.editOptions[valueKey] || [];
+                const actualOptions = availableOptions.filter(opt => opt.id !== 'all' && opt.id !== 'All');
+                if (Array.isArray(rawValue) && actualOptions.length > 0 && rawValue.length === actualOptions.length) {
+                    const allSelected = actualOptions.every(opt => rawValue.includes(opt.id));
                     if (allSelected) {
                         return column.allOptionsText;
                     }
                 }
             }
-            return row[columnKey].join('; ');
+            return displayValue.join('; ');
         }
 
         return row[columnKey] || '-';
@@ -484,6 +490,11 @@ export class ReusableTableComponent implements OnInit {
 
     getOptions(key: keyof EditOptionsMap): SelectionOption[] {
         return this.editOptions[key] ?? [];
+    }
+
+    getSelectboxOptions(key: string): any[] {
+        const options = this.getOptions(key as keyof EditOptionsMap);
+        return options.map(opt => ({ value: opt.id, text: opt.text }));
     }
 
     getEditLabel(key: string): string {

@@ -97,12 +97,31 @@ currentSort[column.key] === 'desc'? 'desc':
                         <ng-container *ngIf="!column.isCheckBox && !column.isAction">
                             <ng-container
                                 *ngIf="enableEdit && isEditing(i) && isEditableColumn(column.key); else displayCell">
-                                <app-multi-selection [options]="getOptions(column.key)"
-                                    [multiSelect]="column.multiSelect !== false" [isRequired]="false"
-                                    [label]="getEditLabel(column.key)"
-                                    [allOptionsText]="column.allOptionsText || 'All Items'"
-                                    [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]">
-                                </app-multi-selection>
+                                <!-- Use app-selectbox for blindOrHide column (no search), app-multi-selection for others -->
+                                <ng-container *ngIf="column.key === 'blindOrHide'; else multiSelectField">
+                                    <app-selectbox [isRequired]="false" 
+                                        [label]="getEditLabel(column.key)" 
+                                        type="text" 
+                                        [placeHolder]="getEditLabel(column.key)"
+                                        className="w-100"
+                                        [data]="getSelectboxOptions(column.key)" 
+                                        classWrapperName="p-0" 
+                                        [isFull]="true"
+                                        [isHighLight]="true"
+                                        [zIndex]="2"
+                                        [id]="'editBlindOrHide' + i"
+                                        [ngModelOptions]="{ standalone: true }" 
+                                        [(ngModel)]="editRowValues[column.key][0]">
+                                    </app-selectbox>
+                                </ng-container>
+                                <ng-template #multiSelectField>
+                                    <app-multi-selection [options]="getOptions(column.key)"
+                                        [multiSelect]="column.multiSelect !== false" [isRequired]="false"
+                                        [label]="getEditLabel(column.key)"
+                                        [allOptionsText]="column.allOptionsText || 'All Items'"
+                                        [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]">
+                                    </app-multi-selection>
+                                </ng-template>
                             </ng-container>
                             <ng-template #displayCell>
                                 <a *ngIf="isLinkColumn(column.key)" class="link-primary"

@@ -335,19 +335,55 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
         this.exceptedUserSelection.clear();
     }
 
-    onProfileUpdated(event: EditableRowUpdate): void {
+async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
         const updatedRow = event.row;
         const index = event.index;
 
         // Convert back from display values to original structure
         this.restoreProfileDataStructure(updatedRow, index);
 
-        this.displayAlertEditProfileSuccessfulTimeOut = setTimeout(() => {
-            if (this.displayAlertEditProfileSuccessfull) {
-                this.displayAlertEditProfileSuccessfull = false;
+        try {
+            this.setLoading(true);
+            const reportProfileSettingId = updatedRow.profileId;
+            const updateData = {
+                profileId: reportProfileSettingId,
+                testIds: updatedRow.tests?.map((t: any) => t.studyTestId) || [],
+                cohortId: updatedRow.cohortId || '',
+                visitIds: updatedRow.visits?.map((v: any) => v.visitId) || [],
+                blindOrHide: updatedRow.blindOrHide
+            };
+
+            const response = await firstValueFrom(
+                this.adminManagementService.updateReportProfileSetting(reportProfileSettingId, updateData)
+            );
+
+            if (response?.success) {
+                this.displayAlertEditProfileSuccessfull = true;
+                this.showAlert('success', `Profile settings updated successfully.`);
+                this.toggleAlertWithTimeout("isAlertShown");
+                
+                // Refetch table data
+                this.page = 1;
+                await this.getDetailProfile();
+            } else {
+                this.showAlert('error', 'Failed to update profile settings. Please try again.');
+                this.toggleAlertWithTimeout("isAlertShown");
             }
-        }, 8000)
-        // TODO: Call API to save the profile update
+        } catch (error: any) {
+            console.error('Error updating profile:', error);
+            this.showAlert('error', 'An error occurred while updating profile settings.');
+            this.toggleAlertWithTimeout("isAlertShown");
+        } finally {
+            this.setLoading(false);
+            if (this.displayAlertEditProfileSuccessfulTimeOut) {
+                clearTimeout(this.displayAlertEditProfileSuccessfulTimeOut);
+            }
+            this.displayAlertEditProfileSuccessfulTimeOut = setTimeout(() => {
+                if (this.displayAlertEditProfileSuccessfull) {
+                    this.displayAlertEditProfileSuccessfull = false;
+                }
+            }, 8000);
+        }
     }
 
     /**
