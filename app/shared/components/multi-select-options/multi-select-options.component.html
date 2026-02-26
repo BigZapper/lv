@@ -71,6 +71,12 @@
                         (input)="onSearchChange()" (click)="$event.stopPropagation()" autocomplete="off"
                         id="searchInput">
                 </div>
+                <!-- Validation Error Message -->
+                <div *ngIf="validationErrorMessage" 
+                    [ngClass]="'validation-error-' + validationErrorType"
+                    class="validation-error-message">
+                    <span class="error-text">{{ validationErrorMessage }}</span>
+                </div>
                 <!-- <Protocol List -->
                 <div class="protocol-1ist-wrapper" [style.height]="isStorageBlindServie? calc(108vh-653px): ''">
                     <!--  Empty search results message -->

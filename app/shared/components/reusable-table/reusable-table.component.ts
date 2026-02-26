@@ -84,6 +84,9 @@ export class ReusableTableComponent implements OnInit {
     @Input() enableEdit = false;
     @Input() editOptions: EditOptionsMap = {};
     @Input() editKeyMap: Record<string, string> = {}; // Map display keys to actual edit value keys (e.g., 'testsDisplay' -> 'testsValues')
+    @Input() testCohortValidationError: string = ''; // Error message for test-cohort validation
+    @Input() displayTestCohortValidationError: boolean = false; // Flag to show/hide validation error
+    @Input() onTestsSelectionChange: ((selectedTestIds: string[], rowIndex: number) => void) | null = null; // Callback when tests selection changes
     @Output() rowUpdated = new EventEmitter<EditableRowUpdate>();
     @Output() editCanceled = new EventEmitter<number>();
 
@@ -459,6 +462,11 @@ export class ReusableTableComponent implements OnInit {
     }
 
     saveEdit(row: any, index: number): void {
+        // Prevent save if there's a test cohort validation error for the testId column
+        if (this.testCohortValidationError && this.editRowValues['testId'] && this.editRowValues['testId'].length > 0) {
+            return;
+        }
+
         const updatedRow = { ...row };
         // Update all editable columns with new values
         this.columns.forEach(column => {
@@ -525,6 +533,18 @@ export class ReusableTableComponent implements OnInit {
         console.log('Selected Tests:', selectedTests);
     }
     onLoadMoreTests(): void {
+        this.loadMore.emit();
+    }
+
+    /**
+     * Handle test selection change during edit mode
+     * Calls parent component callback for validation
+     */
+    onEditTestsSelectionChange(selectedTestIds: string[], rowIndex: number): void {
+        if (this.onTestsSelectionChange) {
+            this.onTestsSelectionChange(selectedTestIds, rowIndex);
+        }
+    }
         console.log('test');
     }
 }

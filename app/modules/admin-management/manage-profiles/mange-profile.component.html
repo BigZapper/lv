@@ -181,7 +181,10 @@
                                     (addNewProfileSuccessfully)="addNewProfileSuccessfully()"
                                     [visitOptions]="visitOptions" [tableLayout]="'fixed'" [enableEdit]="true"
                                     [editOptions]="editOptions" [editKeyMap]="editKeyMap"
-                                    (rowUpdated)="onProfileUpdated ($event)" (editCanceled)="onEditCanceled()">
+                                    (rowUpdated)="onProfileUpdated ($event)" (editCanceled)="onEditCanceled()"
+                                    [testCohortValidationError]="testCohortValidationError"
+                                    [displayTestCohortValidationError]="displayTestCohortValidationError"
+                                    [onTestsSelectionChange]="onTestsSelectionChangeInEdit.bind(this)">
                                 </app-reusable-table>
                             </div>
 

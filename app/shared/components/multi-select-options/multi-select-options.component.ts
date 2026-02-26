@@ -12,6 +12,45 @@ export interface SelectionOption {
     selector: 'app-multi-selection',
     templateUrl: './multi-select-options.component.html',
     styleUrls: ['./multi-select-options. component. scss'],
+    styles: [`
+        .validation-error-message {
+            padding: 8px 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .validation-error-error {
+            background-color: #ffebee;
+            border: 1px solid #ef5350;
+        }
+
+        .validation-error-error .error-text {
+            color: #c62828;
+        }
+
+        .validation-error-warning {
+            background-color: #fff3e0;
+            border: 1px solid #ffa726;
+        }
+
+        .validation-error-warning .error-text {
+            color: #e65100;
+        }
+
+        .validation-error-info {
+            background-color: #e3f2fd;
+            border: 1px solid #42a5f5;
+        }
+
+        .validation-error-info .error-text {
+            color: #1565c0;
+        }
+    `],
     providers: [
         {
             provide: NG_VALUE_ACCESSOR,
@@ -49,6 +88,8 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
     @Input() loadMoreThreshold: number = 10;
     @Input() isLoading: boolean = false;
     @Input() maxItems: number = 12000; // Maximum items to load
+    @Input() validationErrorMessage: string = ''; // Error message for validation
+    @Input() validationErrorType: 'error' | 'warning' | 'info' = 'error'; // Type of validation error
 
     @Output() optionsChange = new EventEmitter<SelectionOption[]>();
     @Output() onAllOptionChange = new EventEmitter<boolean>();

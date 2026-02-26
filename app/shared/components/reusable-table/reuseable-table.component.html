@@ -119,7 +119,10 @@ currentSort[column.key] === 'desc'? 'desc':
                                         [multiSelect]="column.multiSelect !== false" [isRequired]="false"
                                         [label]="getEditLabel(column.key)"
                                         [allOptionsText]="column.allOptionsText || 'All Items'"
-                                        [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]">
+                                        [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]"
+                                        (change)="column.key === 'testId' && onEditTestsSelectionChange(editRowValues[column.key], editRowIndex)"
+                                        [validationErrorMessage]="column.key === 'testId' && displayTestCohortValidationError ? testCohortValidationError : ''"
+                                        [validationErrorType]="'error'">
                                     </app-multi-selection>
                                 </ng-template>
                             </ng-container>

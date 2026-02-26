@@ -183,6 +183,13 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     //#endregion
 
+    //#region Cohort-Test Validation Error Variables
+    testCohortValidationError = '';
+    displayTestCohortValidationError = false;
+    testCohortValidationErrorTimeOut: any = null;
+    cohortTestsMapping: Map<string, string[]> = new Map(); // Maps cohortId to array of testIds
+    //#endregion
+
     // Cache for editOptions to prevent recreating on every change detection cycle
     private _editOptionsCache: Record<string, SelectionOption[]> | null = null;
     private _editOptionsCacheHash: string = '';
@@ -601,6 +608,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
         this.page = 1;
         this.getDetailProfile();
         this.getFilterDropdownDataByProFile();
+        this.loadCohortTestsMappingForValidation();
     }
 
     onToggleProfileCheckbox(profile: Profile): void {
@@ -1000,5 +1008,112 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
     onRemoveBlindHide() {
         this.showRemoveBlindHideModal = !this.showRemoveBlindHideModal;
     }
+
+    //#region Cohort-Test Validation Methods
+    /**
+     * Validates if all selected tests belong to the same cohort
+     * @param selectedTestIds Array of selected test IDs (format: "testId@version")
+     * @returns The cohort ID if all tests are from same cohort, null otherwise
+     */
+    validateTestsCohortCompatibility(selectedTestIds: string[]): string | null {
+        if (!selectedTestIds || selectedTestIds.length === 0) {
+            return null;
+        }
+
+        const cohortIds = new Set<string>();
+        
+        // Iterate through cohortTestsMapping to find which cohort each test belongs to
+        for (const [cohortId, testIds] of this.cohortTestsMapping) {
+            const matchingTests = selectedTestIds.filter(testId => testIds.includes(testId));
+            if (matchingTests.length > 0) {
+                cohortIds.add(cohortId);
+            }
+        }
+
+        // If tests belong to only one cohort, validation passes
+        if (cohortIds.size === 1) {
+            return Array.from(cohortIds)[0];
+        }
+
+        // If tests belong to multiple cohorts, validation fails
+        return null;
+    }
+
+    /**
+     * Show validation error message with auto-clear timeout
+     */
+    showTestCohortValidationError(message: string = 'Selected tests must belong to the same cohort'): void {
+        this.testCohortValidationError = message;
+        this.displayTestCohortValidationError = true;
+        
+        // Auto-clear after 5 seconds
+        if (this.testCohortValidationErrorTimeOut) {
+            clearTimeout(this.testCohortValidationErrorTimeOut);
+        }
+        this.testCohortValidationErrorTimeOut = setTimeout(() => {
+            this.clearTestCohortValidationError();
+        }, 5000);
+    }
+
+    /**
+     * Clear validation error message
+     */
+    clearTestCohortValidationError(): void {
+        this.testCohortValidationError = '';
+        this.displayTestCohortValidationError = false;
+        if (this.testCohortValidationErrorTimeOut) {
+            clearTimeout(this.testCohortValidationErrorTimeOut);
+        }
+    }
+
+    /**
+     * Handle test selection change in edit mode
+     * Called from reusable-table when tests are selected
+     */
+    onTestsSelectionChangeInEdit(selectedTestIds: string[]): void {
+        const commonCohortId = this.validateTestsCohortCompatibility(selectedTestIds);
+        
+        if (commonCohortId === null && selectedTestIds.length > 0) {
+            // Multiple cohorts detected - show error
+            this.showTestCohortValidationError('Selected tests must belong to the same cohort');
+        } else {
+            // Valid selection - clear error
+            this.clearTestCohortValidationError();
+        }
+    }
+
+    /**
+     * Load cohort-test mapping from API for validation purposes
+     * This uses getTestsAndCohorts API to populate cohortTestsMapping
+     */
+    async loadCohortTestsMappingForValidation(): Promise<void> {
+        try {
+            if (!this.selectedProfile?.profileId) {
+                return;
+            }
+
+            const queryParams = {
+                profileId: this.selectedProfile.profileId
+            };
+            
+            const response = await firstValueFrom(
+                this.adminManagementService.getTestsAndCohorts(queryParams)
+            );
+
+            // Clear existing mapping
+            this.cohortTestsMapping.clear();
+
+            // Parse response and populate cohort-tests mapping
+            const cohortsData = response?.data?.cohorts || [];
+            cohortsData.forEach((cohort: any) => {
+                // Map tests to cohort
+                const testIds = cohort.tests?.map((t: any) => t.studyTestId + '@' + t.versionNumber) || [];
+                this.cohortTestsMapping.set(cohort.cohortId, testIds);
+            });
+        } catch (error) {
+            console.error('Error loading cohort-tests mapping:', error);
+        }
+    }
+    //#endregion
 }
 //#endregion
