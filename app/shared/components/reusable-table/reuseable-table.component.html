@@ -38,7 +38,9 @@ currentSort[column.key] === 'desc'? 'desc':
                     <td class="text-left padding-add-profile" [style.width]="calc((100% 557px)/2)">
                         <app-multi-selection [label]="'Tests'" [isRequired]="false" [zIndex]="2" [checkPosition]="right"
                             [isMinusCheckBox]="true" [showBorder]="true" [placeholder]="'Tests'" [options]="testOptions"
-                            [alloptionsText]="'All Tests'" (optionsChange)="onSelectTest($event)" [showMoreChip]="true">
+                            [alloptionsText]="'All Tests'" (optionsChange)="onSelectTest($event)" [showMoreChip]="true"
+                            [validationErrorMessage]="displayTestCohortValidationError ? testCohortValidationError : ''"
+                            [validationErrorType]="'error'">
                         </app-multi-selection>
                     </td>
                     <td class="text-left padding-add-profile" [style.width]="20px"> <app-multi-selection
@@ -120,8 +122,8 @@ currentSort[column.key] === 'desc'? 'desc':
                                         [label]="getEditLabel(column.key)"
                                         [allOptionsText]="column.allOptionsText || 'All Items'"
                                         [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]"
-                                        (change)="column.key === 'testId' && onEditTestsSelectionChange(editRowValues[column.key], editRowIndex)"
-                                        [validationErrorMessage]="column.key === 'testId' && displayTestCohortValidationError ? testCohortValidationError : ''"
+                                        (ngModelChange)="column.key === 'testsDisplay' && onEditTestsSelectionChange(editRowValues[column.key], editRowIndex)"
+                                        [validationErrorMessage]="column.key === 'testsDisplay' && displayTestCohortValidationError ? testCohortValidationError : ''"
                                         [validationErrorType]="'error'">
                                     </app-multi-selection>
                                 </ng-template>

@@ -877,6 +877,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
             if (!this.selectedProfile) this.selectedProfile = loadingProfiles.find(p => p.isDefault === true) || null;
             this.getDetailProfile();
             this.getFilterDropdownDataByProFile();
+            this.loadCohortTestsMappingForValidation();
             this.profileOptions = this.profiles.map(p => ({ id: p.profileId, text: p.profileName }))
         } catch (error: any) {
             console.log(error)
@@ -1070,7 +1071,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
      * Handle test selection change in edit mode
      * Called from reusable-table when tests are selected
      */
-    onTestsSelectionChangeInEdit(selectedTestIds: string[]): void {
+    onTestsSelectionChangeInEdit(selectedTestIds: string[], rowIndex?: number): void {
         const commonCohortId = this.validateTestsCohortCompatibility(selectedTestIds);
         
         if (commonCohortId === null && selectedTestIds.length > 0) {

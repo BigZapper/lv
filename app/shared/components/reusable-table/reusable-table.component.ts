@@ -462,8 +462,8 @@ export class ReusableTableComponent implements OnInit {
     }
 
     saveEdit(row: any, index: number): void {
-        // Prevent save if there's a test cohort validation error for the testId column
-        if (this.testCohortValidationError && this.editRowValues['testId'] && this.editRowValues['testId'].length > 0) {
+        // Prevent save if there's a test cohort validation error for the tests column
+        if (this.displayTestCohortValidationError && this.editRowValues['testsDisplay'] && this.editRowValues['testsDisplay'].length > 0) {
             return;
         }
 
@@ -513,12 +513,21 @@ export class ReusableTableComponent implements OnInit {
         this.addNewProfile = false;
     }
     onClickAddNewProfile() {
+        if (this.displayTestCohortValidationError) {
+            return;
+        }
         this.addNewProfile = false;
         this.addNewProfileSuccessfully.emit()
     }
     onSelectTest(data: any) {
         console.log('selected: ', data);
         this.selectedTestId = data;
+        const selectedTestIds = Array.isArray(data)
+            ? data.map((option: any) => option?.id).filter((id: string) => !!id)
+            : [];
+        if (this.onTestsSelectionChange) {
+            this.onTestsSelectionChange(selectedTestIds, -1);
+        }
     }
     onSelectCohort(data: any) {
         console.log('selected: ', data);
@@ -533,7 +542,7 @@ export class ReusableTableComponent implements OnInit {
         console.log('Selected Tests:', selectedTests);
     }
     onLoadMoreTests(): void {
-        this.loadMore.emit();
+        console.log('test');
     }
 
     /**
@@ -544,7 +553,5 @@ export class ReusableTableComponent implements OnInit {
         if (this.onTestsSelectionChange) {
             this.onTestsSelectionChange(selectedTestIds, rowIndex);
         }
-    }
-        console.log('test');
     }
 }
