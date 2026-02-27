@@ -120,6 +120,9 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
     visitOptionsByProfile: any[] = [
     ];
 
+    // Store studyId from filter response
+    studyId: string | null = null;
+
     sortField = 'Tests';
     sortType = 2;
     profileDataTable: any = [];
@@ -342,7 +345,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
         this.exceptedUserSelection.clear();
     }
 
-async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
+    async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
         const updatedRow = event.row;
         const index = event.index;
 
@@ -368,7 +371,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
                 this.displayAlertEditProfileSuccessfull = true;
                 this.showAlert('success', `Profile settings updated successfully.`);
                 this.toggleAlertWithTimeout("isAlertShown");
-                
+
                 // Refetch table data
                 this.page = 1;
                 await this.getDetailProfile();
@@ -800,6 +803,8 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
             const filterResponse = await firstValueFrom(
                 this.adminManagementService.getDropDownFilterProfile(queryParams)
             );
+            // Extract studyId from filterResponse
+            this.studyId = filterResponse?.studyId || null;
             this.testOptions = filterResponse?.tests?.map((t: any) => ({
                 text: t.testName,
                 actualId: t.studyTestId,
@@ -1021,7 +1026,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
         }
 
         const cohortIds = new Set<string>();
-        
+
         // Iterate through cohortTestsMapping to find which cohort each test belongs to
         for (const [cohortId, testIds] of this.cohortTestsMapping) {
             const matchingTests = selectedTestIds.filter(testId => testIds.includes(testId));
@@ -1045,7 +1050,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
     showTestCohortValidationError(message: string = 'Selected tests must belong to the same cohort'): void {
         this.testCohortValidationError = message;
         this.displayTestCohortValidationError = true;
-        
+
         // Auto-clear after 5 seconds
         if (this.testCohortValidationErrorTimeOut) {
             clearTimeout(this.testCohortValidationErrorTimeOut);
@@ -1072,7 +1077,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
      */
     onTestsSelectionChangeInEdit(selectedTestIds: string[]): void {
         const commonCohortId = this.validateTestsCohortCompatibility(selectedTestIds);
-        
+
         if (commonCohortId === null && selectedTestIds.length > 0) {
             // Multiple cohorts detected - show error
             this.showTestCohortValidationError('Selected tests must belong to the same cohort');
@@ -1095,7 +1100,7 @@ async onProfileUpdated(event: EditableRowUpdate): Promise<void> {
             const queryParams = {
                 profileId: this.selectedProfile.profileId
             };
-            
+
             const response = await firstValueFrom(
                 this.adminManagementService.getTestsAndCohorts(queryParams)
             );
