@@ -51,7 +51,7 @@ currentSort[column.key] === 'desc'? 'desc':
                             [label]="'Visits'" [isRequired]="false" [checkPosition]="right" [isMinusCheckBox]="true"
                             [showBorder]="true" [placeholder]="'Visits'" [zIndex]="2" [options]="visitOptions"
                             [alloptionsText]="'All Visits'" (optionsChange)="onSelectVisit($event)"
-                            [showMoreChip]="true">
+                            hasError="getVisitAddProfileError" [showMoreChip]="true">
                         </app-multi-selection></td>
                     <td class="text-left padding-add-profile" [style.width]="200px"><app-selectbox [isRequired]="false"
                             label="Blind/Hide" type="text" placeHolder="Blind/Hide" className="w-100"
@@ -99,7 +99,7 @@ currentSort[column.key] === 'desc'? 'desc':
                                 *ngIf="enableEdit && isEditing(i) && isEditableColumn(column.key); else displayCell">
                                 <app-multi-selection [options]="getOptions(column.key)"
                                     [multiSelect]="column.multiSelect !== false" [isRequired]="false"
-                                    [label]="getEditLabel(column.key)"
+                                    [label]="getEditLabel(column.key)" [hasError]="editRowErrors[column.key]"
                                     [allOptionsText]="column.allOptionsText || 'All Items'"
                                     [ngModelOptions]="{ standalone: true }" [(ngModel)]="editRowValues[column.key]">
                                 </app-multi-selection>
@@ -110,8 +110,8 @@ currentSort[column.key] === 'desc'? 'desc':
                                     {{ getCellValue(row, column.key) }}
                                 </a>
                                 <span *ngIf="!isLinkColumn(column.key)">
-                                    <span [class]="column.classData || *ngIf=" !isTooltipColKey (row, column.key); else
-                                        tooltipCell"> {{
+                                    <span [class]="column.classData || ''"
+                                        *ngIf="!isTooltipColKey (row, column.key); else tooltipCell"> {{
                                         getCellValue(row, column.key)
                                         }}</span>
                                     <ng-template #tooltipCell>

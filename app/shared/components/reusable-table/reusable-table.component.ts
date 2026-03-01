@@ -1,23 +1,27 @@
 import { Component, EventEmitter, Input, Output, OnInit, SimpleChanges, ViewChild, ElementRef } from '@angular/core';
+import { AdminManagement Service } from '@app/shared/services';
 import { EmptyMessage } from '@app/shared/utils';
-
+import { DialogActions } from '@app/store/dialog';
+import { Store } from '@ngrx/store';
+import { firstValueFrom, Subject } from 'rxjs';
 export interface SelectionOption {
     id: string;
     text: string;
     selected?: boolean;
 }
-
 export interface TableColumn {
     title: string;
     key: string;
     sortable?: boolean;
     class?: string;
+    classData?: string;
     isCheckBox?: boolean;
     isAction?: boolean;
     sortField?: string;
+    widthColumn?: string;
     editable?: boolean;
     multiSelect?: boolean;
-    allOptionsText?: string;
+    alloptionsText?: string;
 }
 export interface SortEvent {
     column: string;
@@ -62,7 +66,7 @@ export class ReusableTableComponent implements OnInit {
     @Input() defaultSortDirection: 'asc' | 'desc' = 'asc';
     @Input() emptyMessage = EmptyMessage;
     @Output() sortChange = new EventEmitter<SortEvent>();
-    @Input() isScrolly = false;
+    @Input() isScrollY = false;
     @Input() isNoBorder = false;
     @Input() isTableReportAdmin = false;
     @Input() tableLayout = 'auto';
@@ -453,6 +457,8 @@ export class ReusableTableComponent implements OnInit {
     }
 
     saveEdit(row: any, index: number): void {
+        if ((this.editRowValues['testId'] || []).length === 0 || (this.editRowValues['cohortId'] || []).length === 0 || (this.editRowValues['visitId'] || []).length === 0 || (this.editRowValues['blindOrHide'] || []).length === 0) return
+
         const updatedRow = { ...row };
         // Update all editable columns with new values
         this.columns.forEach(column => {
@@ -490,10 +496,34 @@ export class ReusableTableComponent implements OnInit {
         const column = this.columns.find(col => col.key === key);
         return column?.title || '';
     }
+
+    /**
+     * Handle cohort selection change in edit mode
+     * Reset visitId when cohortId is cleared
+     */
+    onEditCohortChange(selectedCohorts: string[]): void {
+        this.editRowValues['cohortId'] = selectedCohorts;
+        // Reset visitId if no cohort selected
+        if (selectedCohorts.length === 0) {
+            this.editRowValues['visitId'] = [];
+        }
+    }
+
+    /**
+     * Get edit row validation errors for all columns
+     * Checks if cohort has empty selection
+     * @returns Object with error states for each column key
+     */
+    get editRowErrors() {
+        return (this.editRowValues['cohortId'] || []).length === 0
+    }
+
     onClickCancleAddNewProfile() {
         this.addNewProfile = false;
     }
     onClickAddNewProfile() {
+        if (this.selectedCohortId.length === 0 || this.selectedTestId.length === 0 || this.selectedVisitId.length === 0) return
+
         this.addNewProfile = false;
         this.addNewProfileSuccessfully.emit()
     }
@@ -515,5 +545,9 @@ export class ReusableTableComponent implements OnInit {
     }
     onLoadMoreTests(): void {
         console.log('test');
+    }
+
+    get getVisitAddProfileError() {
+        return !this.selectedTestId || this.selectedTestId?.length === 0;
     }
 }

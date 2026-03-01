@@ -1,0 +1,153 @@
+{
+"studyId": "003a5e17-8d54-47f8-a502-282aa538167",
+"cohorts": [
+{
+"cohortId": "b20e08ef-168a-41c3-bfad-9e47873625a6",
+"cohortName": "Standard Cohort",
+"versionNumber": 1
+}
+],
+"visits": [
+{
+"visitId": "c0a2ac44-9966-453f-9411-b583d94a7923",
+"visitName": "WEEK 12",
+"versionNumber": 1
+}, {
+"visitId": "56c03367-8d24-4844-86ea-58f4c9fc31ca",
+"visitName": "PT WEEK 4",
+"versionNumber": 1
+},
+{
+"visitId": "2e54d571-e36c-4b76-8ce9-9c2aee8c170a",
+"visitName": "PT WEEK 12",
+"versionNumber": 1
+}, {
+"visitId": "670f6367-705e-45f4-ad51-36c9598ab8e9",
+"visitName": "PT WEEK 24",
+"versionNumber": 1
+}, {
+"visitId": "cd358c03-5806-4b8f-bf3b-bb160881d7f6",
+"visitName": "SCREENING",
+"versionNumber": 1
+}, {
+"visitId": "e30cca49-b781-4248-93bf-94157bf4cc78",
+"visitName": "DC",
+"versionNumber": 1
+}, {
+"visitId": "17f079a9-f4c6-4418-8732-24795a3f17b2",
+"visitName": "UNSCHED",
+"versionNumber": 1
+}, {
+"visitId": "696b40fd-d31e-4085-b130-1a3572cef58b",
+"visitName": "WEEK 12-DC",
+"versionNumber": 1
+}, {
+  "visitId": "a525db53-6ac7-4425-9cc8-bde5e8e4ee9d",
+  "visitName": "PT WEEK24-DC",
+  "versionNumber": 1
+},
+{
+  "visitId": "cf92b65e-4e1f-4954-b841-f72a5c865c60",
+  "visitName": "PT DC",
+  "versionNumber": 1
+},
+{
+  "visitId": "651d8ea1-0686-44e8-b2e1-7e39d0a18086",
+  "visitName": "DAY1",
+  "versionNumber": 1
+}
+
+],
+"tests": [
+{
+"studyTestId": "3d16384f-cfb3-46b4-a9df-ff910e10fe9e",
+"testName": "Chemistry Panel",
+"versionNumber": 1
+},
+{
+"studyTestId": "bca48d5a-f426-4f4c-9194-bd255bfafc87", "versionNumber": 1,
+"testName": "Hematology"
+},
+{
+"studyTestId": "86d495e1-a68c-4f0e-af4b-388e8baa5157",
+"testName": "HCV RNA Copies Log10",
+"versionNumber": 1
+},
+{
+"studyTestId": "f5fce333-effd-49ff-a70a-88dca8cc43ca",
+"testName": "HCV RNA COBAS Ampliprep/TaqMan",
+"versionNumber": 1
+},
+{
+"studyTestId": "71a9e999-0642-4066-8555-f46ceadcf904",
+"testName": "HCV SUB-TYPE",
+"versionNumber": 1
+}
+]
+}
+
+
+{
+"items": [
+{
+"profileSettingsId": "97830146-029f-4702-ae99-a56e550f2fc3", 
+"cohortId": "b20e08ef-168a-41c3-bfad-9e47873625a6", 
+"cohortName": "Standard Cohort",
+"visits": [
+{
+"visitId": "ea6d9a24-9d22-487d-bbde-83fc72a7alef", 
+"visitName": "WEEK 2",
+"versionNumber": 1
+}
+],
+"tests": [
+{
+"studyTestId": "86d495e1-a68c-4f0e-af4b-388e8baa5157", "testName": "HCV RNA Copies Log10",
+"versionNumber": 1
+"blindOrHide": "H"
+}
+],
+},
+{
+"profileSettingsId": "3f2f8874-7061-48f2-b161-94165ee82407", 
+"cohortId": "b20e08ef-168a-41c3-bfad-9e47873625a6", 
+"cohortName": "Standard Cohort",
+"visits": [
+{"visitId": "56c03367-8d24-4844-86ea-58f4c9fc31ca", "visitName": "PT WEEK 4",
+"versionNumber": 1
+}
+],
+
+"tests": [
+{
+"studyTestId": "bca48d5a-f426-4f4c-9194-bd255bfafc87", "testName": "Hematology",
+"versionNumber": 1
+"blindOrHide": "H"
+}
+],
+},
+{
+"profileSettingsId": "d8ffb35c-a064-4605-85e5-d06e2a974b15", 
+"cohortId": "b20e08ef-168a-41c3-bfad-9e47873625a6",
+"cohortName": "Standard Cohort",
+"visits": [
+{
+"visitId": "651d8ea1-0686-44e8-b2e1-7e39d0a18086",
+"visitName": "DAY1",
+"versionNumber": 1
+}
+],
+"tests": [
+{
+"studyTestId": "bca48d5a-f426-4f4c-9194-bd255bfafc87",
+"testName": "Hematology",
+"versionNumber": 1
+}
+],
+"blindOrHide": "H"
+},
+],
+"totalCount": 3,
+"filteredTotalCount": null,
+"filteredOptions": null
+}
