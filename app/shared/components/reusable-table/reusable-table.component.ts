@@ -1,23 +1,27 @@
 import { Component, EventEmitter, Input, Output, OnInit, SimpleChanges, ViewChild, ElementRef } from '@angular/core';
+import { AdminManagement Service } from '@app/shared/services';
 import { EmptyMessage } from '@app/shared/utils';
-
+import { DialogActions } from '@app/store/dialog';
+import { Store } from '@ngrx/store';
+import { firstValueFrom, Subject } from 'rxjs';
 export interface SelectionOption {
     id: string;
     text: string;
     selected?: boolean;
 }
-
 export interface TableColumn {
     title: string;
     key: string;
     sortable?: boolean;
     class?: string;
+    classData?: string;
     isCheckBox?: boolean;
     isAction?: boolean;
     sortField?: string;
+    widthColumn?: string;
     editable?: boolean;
     multiSelect?: boolean;
-    allOptionsText?: string;
+    alloptionsText?: string;
 }
 export interface SortEvent {
     column: string;
@@ -62,7 +66,7 @@ export class ReusableTableComponent implements OnInit {
     @Input() defaultSortDirection: 'asc' | 'desc' = 'asc';
     @Input() emptyMessage = EmptyMessage;
     @Output() sortChange = new EventEmitter<SortEvent>();
-    @Input() isScrolly = false;
+    @Input() isScrollY = false;
     @Input() isNoBorder = false;
     @Input() isTableReportAdmin = false;
     @Input() tableLayout = 'auto';
@@ -84,9 +88,6 @@ export class ReusableTableComponent implements OnInit {
     @Input() enableEdit = false;
     @Input() editOptions: EditOptionsMap = {};
     @Input() editKeyMap: Record<string, string> = {}; // Map display keys to actual edit value keys (e.g., 'testsDisplay' -> 'testsValues')
-    @Input() testCohortValidationError: string = ''; // Error message for test-cohort validation
-    @Input() displayTestCohortValidationError: boolean = false; // Flag to show/hide validation error
-    @Input() onTestsSelectionChange: ((selectedTestIds: string[], rowIndex: number) => void) | null = null; // Callback when tests selection changes
     @Output() rowUpdated = new EventEmitter<EditableRowUpdate>();
     @Output() editCanceled = new EventEmitter<number>();
 
@@ -321,29 +322,23 @@ export class ReusableTableComponent implements OnInit {
             return row[columnKey] === 'B' ? 'Blind' : 'Hide';
         }
 
-        const column = this.columns.find(col => col.key === columnKey);
-        const valueKey = this.editKeyMap[columnKey] || columnKey;
-        const rawValue = row?.[valueKey];
-        const displayValue = row?.[columnKey];
-
-        if (rawValue === 'All' && column?.allOptionsText) {
-            return column.allOptionsText;
-        }
-
-        if (Array.isArray(displayValue)) {
-            if (displayValue.length === 0) return '-';
-            // Check if all options are selected for this column (by IDs)
-            if (column?.allOptionsText && this.editOptions[valueKey]) {
-                const availableOptions = this.editOptions[valueKey] || [];
-                const actualOptions = availableOptions.filter(opt => opt.id !== 'all' && opt.id !== 'All');
-                if (Array.isArray(rawValue) && actualOptions.length > 0 && rawValue.length === actualOptions.length) {
-                    const allSelected = actualOptions.every(opt => rawValue.includes(opt.id));
+        if (Array.isArray(row[columnKey])) {
+            if (row[columnKey].length === 0) return '-';
+            // Check if all options are selected for this column
+            const column = this.columns.find(col => col.key === columnKey);
+            if (column && column.allOptionsText && this.editOptions[columnKey]) {
+                const availableOptions = this.editOptions[columnKey] || [];
+                // Filter out the "All..." option itself from the count
+                const actualOptions = availableOptions.filter(opt => !opt.text.startsWith('All'));
+                // If all actual options are selected, show "All ..." text
+                if (actualOptions.length > 0 && row[columnKey].length === actualOptions.length) {
+                    const allSelected = actualOptions.every(opt => row[columnKey].includes(opt.id));
                     if (allSelected) {
                         return column.allOptionsText;
                     }
                 }
             }
-            return displayValue.join('; ');
+            return row[columnKey].join('; ');
         }
 
         return row[columnKey] || '-';
@@ -462,10 +457,7 @@ export class ReusableTableComponent implements OnInit {
     }
 
     saveEdit(row: any, index: number): void {
-        // Prevent save if there's a test cohort validation error for the tests column
-        if (this.displayTestCohortValidationError && this.editRowValues['testsDisplay'] && this.editRowValues['testsDisplay'].length > 0) {
-            return;
-        }
+        if ((this.editRowValues['testId'] || []).length === 0 || (this.editRowValues['cohortId'] || []).length === 0 || (this.editRowValues['visitId'] || []).length === 0 || (this.editRowValues['blindOrHide'] || []).length === 0) return
 
         const updatedRow = { ...row };
         // Update all editable columns with new values
@@ -500,22 +492,38 @@ export class ReusableTableComponent implements OnInit {
         return this.editOptions[key] ?? [];
     }
 
-    getSelectboxOptions(key: string): any[] {
-        const options = this.getOptions(key as keyof EditOptionsMap);
-        return options.map(opt => ({ value: opt.id, text: opt.text }));
-    }
-
     getEditLabel(key: string): string {
         const column = this.columns.find(col => col.key === key);
         return column?.title || '';
     }
+
+    /**
+     * Handle cohort selection change in edit mode
+     * Reset visitId when cohortId is cleared
+     */
+    onEditCohortChange(selectedCohorts: string[]): void {
+        this.editRowValues['cohortId'] = selectedCohorts;
+        // Reset visitId if no cohort selected
+        if (selectedCohorts.length === 0) {
+            this.editRowValues['visitId'] = [];
+        }
+    }
+
+    /**
+     * Get edit row validation errors for all columns
+     * Checks if cohort has empty selection
+     * @returns Object with error states for each column key
+     */
+    get editRowErrors() {
+        return (this.editRowValues['cohortId'] || []).length === 0
+    }
+
     onClickCancleAddNewProfile() {
         this.addNewProfile = false;
     }
     onClickAddNewProfile() {
-        if (this.displayTestCohortValidationError) {
-            return;
-        }
+        if (this.selectedCohortId.length === 0 || this.selectedTestId.length === 0 || this.selectedVisitId.length === 0) return
+
         this.addNewProfile = false;
         this.addNewProfileSuccessfully.emit()
     }
@@ -553,5 +561,8 @@ export class ReusableTableComponent implements OnInit {
         if (this.onTestsSelectionChange) {
             this.onTestsSelectionChange(selectedTestIds, rowIndex);
         }
+    }
+    get getVisitAddProfileError() {
+        return !this.selectedTestId || this.selectedTestId?.length === 0;
     }
 }

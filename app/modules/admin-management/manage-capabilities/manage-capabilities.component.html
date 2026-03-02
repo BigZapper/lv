@@ -1,0 +1,59 @@
+<ng-template #pagination>
+  <app-pagination-table [page]="page" [pageSize]="pageSize" [total]="capabilityTotal" *ngIf="capabilityTotal > 0"
+    (action)="onActionPage ($event)" [isDesktop]="true">
+  </app-pagination-table>
+</ng-template>
+<div *ngIf="isDesktop">
+  <div>
+    <header style="width: 100vw; padding-bottom: 10px;" class="d-flex align-items-center justify-content-between">
+      <div class="header-title">
+        Manage Capabilities
+      </div>
+      <div class="filter-search-wrapper-desktop">
+        <div style="width: 205px;">
+          <app-autocomplete [isRequired]="false" [label]="'Search'" [type]="'text'" [(ngModel)]="searchFilter"
+            [close]="true" [placeHolder]="'Search'" [className]="'w-100'" [id]="'SearchIdFilter'" [model]="searchFilter"
+            [classWrapperName]="'p-0'" [checkOnPrepend]="false" (prepend)="searchFilter = ''"
+            [isResetValue]="isResetSearch">
+          </app-autocomplete>
+        </div>
+        <div style="width: 205px;">
+          <app-autocomplete [isRequired]="false" [label]="'Capability Name'" [type]="'text'"
+            [isResetValue]="isResetCapabilityName" [(ngModel)]="capabilityNameFilter" [close]="true"
+            [placeHolder]="'Capability Name'" [className]="'w-100'" [id]="'CapabilityNameIdFilter'"
+            [classWrapperName]="'p-0'" (prepend)="capabilityNameFilter = ''" [checkOnPrepend]=" false"
+            [model]="capabilityNameFilter">
+          </app-autocomplete>
+        </div>
+        <div style="width: 205px;">
+          <app-autocomplete [isRequired]="false" [label]="'URL'" [type]="'text'" [(ngModel)]="urlFilter" [close]="true"
+            [placeHolder]="'URL'" [className]="'w-100'" [id]="'URLIdFilter'" [classWrapperName]="'p-0'"
+            [model]="urlFilter" [checkOnPrepend]="false" (prepend)="urlFilter = ''" [isResetValue]="isResetUrl">
+          </app-autocomplete>
+        </div>
+        <app-button text="Apply Filters" [background]="#128474'" [width]="125px" [id]="'btnApplyFilters'"
+          (click)="onApplyFilters()" />
+        <app-button text="Clear Filters" [background]="#128474'" [height]="44px" [width]="125px" [outlined]="true"
+          className="previous-btn" [id]="'btnClearFilters'" (click)="onClearFilters()" />
+        <div class="tab-divider"></div>
+        <div style="margin-right: 54px;">
+          <app-button text="Add new capabilities" [background]="#128474'" [width]="180px'" [height]="'44px'"
+            (onClick)="onClickAddNewCapabilities()" [id]="'btnAddnewcapabilities'" />
+        </div>
+      </div>
+    </header>
+  </div>
+  <div class="wrapper-table">
+    <div class="capability-list-label">
+      Capability list
+    </div>
+    <div style="margin-bottom: 12px;">
+      <app-reusable-table [columns]="tableColumns" [data]="capabilityList" [showSortIcon]="true"
+        (sortChange)="onTableSort($event)" [isScrollY]="false" [isNoBorder]="true" [sortField]="sortField"
+        [currentSort]="currentSortObj" [tableLayout]="'fixed'">
+      </app-reusable-table>
+    </div>
+    <!-- Pagination -->
+    <ng-container *ngTemplateOutlet="pagination"></ng-container>
+  </div>
+</div>

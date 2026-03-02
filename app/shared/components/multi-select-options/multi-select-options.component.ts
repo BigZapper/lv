@@ -63,6 +63,7 @@ export class MultiSelectOptionsComponent implements ControlValueAccessor, OnInit
     @Input() label: string = 'Protocol';
     @Input() isRequired: boolean = true;
     @Input() isStorageBlindServie = false;
+    @Input() hasError: boolean = false;
     @Input() placeholder: string = 'Protocol';
     @Input() allOptionsText: string = 'All Protocols';
     @Input() itemSizePx: number = 40;
