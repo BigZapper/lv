@@ -271,7 +271,7 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
         this.searchProfileForm.valueChanges.pipe(
             debounceTime(300),
             distinctUntilChanged(),
-        ).subscribe(value => this.searchProfile(value.searchProfile));
+        ).subscribe((value: any) => this.searchProfile(value.searchProfile));
 
         this.loadInitialProtocols();
     }
@@ -1017,32 +1017,26 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
 
     //#region Cohort-Test Validation Methods
     /**
-     * Validates if all selected tests belong to the same cohort
-     * @param selectedTestIds Array of selected test IDs (format: "testId@version")
-     * @returns The cohort ID if all tests are from same cohort, null otherwise
+     * Validates selected tests and returns all compatible cohort IDs
+     * @param selectedTests Array of selected tests (string IDs or objects with `id`)
+     * @returns Array of cohort IDs that contain all selected tests
      */
-    validateTestsCohortCompatibility(selectedTestIds: string[]): string | null {
-        if (!selectedTestIds || selectedTestIds.length === 0) {
-            return null;
+    validateTestsCohortCompatibility(selectedTests: any[]): string[] {
+        if (!selectedTests || selectedTests.length === 0) {
+            return [];
         }
 
-        const cohortIds = new Set<string>();
+        const selectedTestIds = selectedTests
+            .map((test: any) => (typeof test === 'string' ? test : test?.id))
+            .filter((id: string | undefined): id is string => !!id);
 
-        // Iterate through cohortTestsMapping to find which cohort each test belongs to
-        for (const [cohortId, testIds] of this.cohortTestsMapping) {
-            const matchingTests = selectedTestIds.filter(testId => testIds.includes(testId));
-            if (matchingTests.length > 0) {
-                cohortIds.add(cohortId);
-            }
+        if (selectedTestIds.length === 0) {
+            return [];
         }
 
-        // If tests belong to only one cohort, validation passes
-        if (cohortIds.size === 1) {
-            return Array.from(cohortIds)[0];
-        }
-
-        // If tests belong to multiple cohorts, validation fails
-        return null;
+        return Array.from(this.cohortTestsMapping.entries())
+            .filter(([, testIds]) => selectedTestIds.every(testId => testIds.includes(testId)))
+            .map(([cohortId]) => cohortId);
     }
 
     /**
@@ -1077,13 +1071,27 @@ export class ManageProfilesComponent implements OnInit, OnDestroy {
      * Called from reusable-table when tests are selected
      */
     onTestsSelectionChangeInEdit(selectedTestIds: string[], rowIndex?: number): void {
-        const commonCohortId = this.validateTestsCohortCompatibility(selectedTestIds);
+        const matchedCohortIds = this.validateTestsCohortCompatibility(selectedTestIds);
 
-        if (commonCohortId === null && selectedTestIds.length > 0) {
-            // Multiple cohorts detected - show error
-            this.showTestCohortValidationError('Selected tests must belong to the same cohort');
+        // Filter cohort options by matched cohort IDs
+        const baseCohortOptions = (this.cohortOptionsByProfile?.length > 0
+            ? this.cohortOptionsByProfile
+            : this.cohortOptions) || [];
+
+        if (!selectedTestIds || selectedTestIds.length === 0) {
+            // No test selected -> show all cohorts
+            this.cohortOptions = [...baseCohortOptions];
         } else {
-            // Valid selection - clear error
+            this.cohortOptions = baseCohortOptions.filter((cohort: any) =>
+                matchedCohortIds.includes(cohort.actualId)
+            );
+        }
+
+        if (matchedCohortIds.length === 0 && selectedTestIds.length > 0) {
+            // No compatible cohort detected - show error
+            this.showTestCohortValidationError('No cohort matches the selected tests');
+        } else {
+            // Valid selection - clear error (1 or many cohorts are both accepted)
             this.clearTestCohortValidationError();
         }
     }
